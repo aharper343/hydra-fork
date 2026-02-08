@@ -1,9 +1,22 @@
 {
   "name": "hydra",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Multi-agent AI orchestration system",
   "type": "module",
   "private": true,
+  "scripts": {
+    "start": "node lib/orchestrator-daemon.mjs start",
+    "stop": "node lib/orchestrator-client.mjs stop",
+    "status": "node lib/orchestrator-client.mjs status",
+    "summary": "node lib/orchestrator-client.mjs summary",
+    "stats": "node lib/orchestrator-client.mjs stats",
+    "usage": "node lib/hydra-usage.mjs",
+    "model": "node lib/orchestrator-client.mjs model",
+    "init": "node lib/orchestrator-client.mjs init",
+    "go": "node lib/hydra-operator.mjs mode=auto",
+    "council": "node lib/hydra-council.mjs",
+    "dispatch": "node lib/hydra-dispatch.mjs"
+  },
   "dependencies": {
     "picocolors": "^1.1.1"
   }

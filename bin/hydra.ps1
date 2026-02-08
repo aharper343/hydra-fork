@@ -1,5 +1,6 @@
 param(
   [string]$Url = $(if ($env:AI_ORCH_URL) { $env:AI_ORCH_URL } else { "http://127.0.0.1:4173" }),
+  [switch]$Full,
   [switch]$SkipDaemon,
   [switch]$SkipHeads,
   [switch]$DryRun,
@@ -11,13 +12,40 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+$hydraRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
+$repoPath = (Get-Location).Path
+
+# ── Default mode: operator only (daemon auto-starts inside Node) ──────────
+
+if (-not $Full) {
+  # Simple mode — the operator handles daemon auto-start and welcome screen
+  if ($DryRun) {
+    Write-Output "[DryRun] node $hydraRoot\lib\hydra-operator.mjs mode=auto url=$Url"
+    if ($Prompt) { Write-Output "[DryRun] prompt=$Prompt" }
+    exit 0
+  }
+
+  try {
+    $Host.UI.RawUI.WindowTitle = "Hydra"
+  } catch {
+    # ignore
+  }
+
+  if ($Prompt) {
+    & node "$hydraRoot\lib\hydra-operator.mjs" "prompt=$Prompt" "url=$Url" "mode=auto"
+  } else {
+    & node "$hydraRoot\lib\hydra-operator.mjs" "url=$Url" "mode=auto"
+  }
+  exit $LASTEXITCODE
+}
+
+# ── Full mode: daemon + 3 agent head terminals + operator ─────────────────
+
 function Escape-SingleQuote {
   param([string]$Value)
   return $Value -replace "'", "''"
 }
 
-$hydraRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
-$repoPath = (Get-Location).Path
 $repoPathEscaped = Escape-SingleQuote -Value $repoPath
 $hydraRootEscaped = Escape-SingleQuote -Value $hydraRoot
 $urlEscaped = Escape-SingleQuote -Value $Url
@@ -137,25 +165,7 @@ try {
 }
 
 if ($Prompt) {
-  & node "$hydraRoot\lib\hydra-operator.mjs" "prompt=$Prompt" "url=$Url" "mode=auto"
+  & node "$hydraRoot\lib\hydra-operator.mjs" "prompt=$Prompt" "url=$Url" "mode=auto" "welcome=false"
 }
 
-$ESC = [char]27
-$RESET   = "$ESC[0m"
-$BOLD    = "$ESC[1m"
-$DIM     = "$ESC[90m"
-$MAGENTA = "$ESC[95m"
-$CYAN    = "$ESC[96m"
-$GREEN   = "$ESC[92m"
-
-Write-Output ""
-Write-Output "  ${BOLD}${MAGENTA}H Y D R A${RESET}  ${DIM}Command Center${RESET}"
-Write-Output "  ${DIM}$([string]::new([char]0x2500, 42))${RESET}"
-Write-Output "  ${DIM}Daemon:${RESET}  $Url"
-Write-Output "  ${DIM}Project:${RESET} $repoPath"
-Write-Output "  ${DIM}Heads:${RESET}   ${MAGENTA}$([char]0x2666) Claude${RESET}  ${CYAN}$([char]0x2726) Gemini${RESET}  ${GREEN}$([char]0x25B6) Codex${RESET}"
-Write-Output "  ${DIM}$([string]::new([char]0x2500, 42))${RESET}"
-Write-Output "  ${DIM}Type prompts below. Use :help or :status inside operator.${RESET}"
-Write-Output ""
-
-& node "$hydraRoot\lib\hydra-operator.mjs" "url=$Url" "mode=auto"
+& node "$hydraRoot\lib\hydra-operator.mjs" "url=$Url" "mode=auto" "welcome=false"

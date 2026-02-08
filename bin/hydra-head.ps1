@@ -97,20 +97,63 @@ npm run hydra:council -- prompt="Council request from $($Agent): <question or co
 "@
 }
 
+function Get-ModelFlags {
+  $hydraRoot = Split-Path -Parent (Split-Path -Parent $PSCommandPath)
+  $configPath = Join-Path $hydraRoot "hydra.config.json"
+
+  if (-not (Test-Path $configPath)) { return @() }
+
+  try {
+    $config = Get-Content $configPath -Raw | ConvertFrom-Json
+    $agentModels = $config.models.$Agent
+    if (-not $agentModels) { return @() }
+
+    $activeKey = if ($agentModels.active) { $agentModels.active } else { "default" }
+
+    if ($activeKey -eq "default") {
+      # Resolve through mode tiers
+      $modeName = if ($config.mode) { $config.mode } else { "performance" }
+      $modeTiers = $config.modeTiers
+      if ($modeTiers -and $modeTiers.$modeName) {
+        $tierPreset = $modeTiers.$modeName.$Agent
+        if ($tierPreset -and $tierPreset -ne "default" -and $agentModels.$tierPreset) {
+          $modelId = $agentModels.$tierPreset
+          $defaultId = $agentModels.default
+          if ($modelId -ne $defaultId) {
+            return @("--model", $modelId)
+          }
+        }
+      }
+      return @()
+    }
+
+    # Per-agent override: resolve preset key to full model ID
+    $modelId = if ($agentModels.$activeKey) { $agentModels.$activeKey } else { $activeKey }
+    $defaultId = $agentModels.default
+
+    if ($modelId -eq $defaultId) { return @() }
+    return @("--model", $modelId)
+  } catch {
+    return @()
+  }
+}
+
 function Start-AgentSession {
   param([string]$Prompt)
 
+  $modelFlags = Get-ModelFlags
+
   switch ($Agent) {
     "claude" {
-      & claude $Prompt
+      & claude $Prompt @modelFlags
       break
     }
     "gemini" {
-      & gemini --prompt-interactive $Prompt
+      & gemini --prompt-interactive $Prompt @modelFlags
       break
     }
     "codex" {
-      & codex $Prompt
+      & codex $Prompt @modelFlags
       break
     }
     default {
