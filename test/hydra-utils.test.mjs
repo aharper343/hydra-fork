@@ -14,6 +14,7 @@ import {
   normalizeTask,
   dedupeTasks,
   classifyPrompt,
+  parseTestOutput,
   nowIso,
   runId,
 } from '../lib/hydra-utils.mjs';
@@ -362,4 +363,117 @@ test('runId returns prefixed timestamp string', () => {
 test('runId defaults to HYDRA prefix', () => {
   const id = runId();
   assert.ok(id.startsWith('HYDRA_'));
+});
+
+// ── parseTestOutput ─────────────────────────────────────────────────────────
+
+test('parseTestOutput extracts TAP summary counters', () => {
+  const stdout = `
+TAP version 13
+ok 1 - adds numbers
+ok 2 - subtracts numbers
+not ok 3 - divides by zero
+  Error: expected 0 to equal Infinity
+# tests 3
+# pass 2
+# fail 1
+# duration_ms 142.5
+`;
+  const result = parseTestOutput(stdout, '');
+  assert.equal(result.total, 3);
+  assert.equal(result.passed, 2);
+  assert.equal(result.failed, 1);
+  assert.equal(result.durationMs, 142.5);
+});
+
+test('parseTestOutput extracts failed test names from not ok lines', () => {
+  const stdout = `
+not ok 1 - widget > renders correctly
+  expected 5 to equal 6
+not ok 2 - api > handles timeout
+  fetch is not defined
+# tests 5
+# pass 3
+# fail 2
+`;
+  const result = parseTestOutput(stdout, '');
+  assert.equal(result.failures.length, 2);
+  assert.equal(result.failures[0].name, 'widget > renders correctly');
+  assert.equal(result.failures[0].error, 'expected 5 to equal 6');
+  assert.equal(result.failures[1].name, 'api > handles timeout');
+  assert.equal(result.failures[1].error, 'fetch is not defined');
+});
+
+test('parseTestOutput handles spec reporter markers', () => {
+  const stdout = `
+  ✗ config > validates schema
+    AssertionError: expected false to be true
+  ✗ auth > rejects invalid token
+    TokenError: invalid signature
+`;
+  const result = parseTestOutput(stdout, '');
+  assert.equal(result.failures.length, 2);
+  assert.equal(result.failures[0].name, 'config > validates schema');
+  assert.equal(result.failures[1].name, 'auth > rejects invalid token');
+});
+
+test('parseTestOutput returns zeros on empty input', () => {
+  const result = parseTestOutput('', '');
+  assert.equal(result.total, 0);
+  assert.equal(result.passed, 0);
+  assert.equal(result.failed, 0);
+  assert.equal(result.durationMs, 0);
+  assert.equal(result.failures.length, 0);
+  assert.equal(result.summary, '');
+});
+
+test('parseTestOutput returns zeros on unparseable input', () => {
+  const result = parseTestOutput('random garbage output\nno tests here', 'some stderr');
+  assert.equal(result.total, 0);
+  assert.equal(result.failed, 0);
+  assert.equal(result.summary, '');
+});
+
+test('parseTestOutput builds readable summary string', () => {
+  const stdout = `
+not ok 1 - widget > renders
+not ok 2 - api > timeout
+not ok 3 - config > schema
+# tests 15
+# pass 12
+# fail 3
+`;
+  const result = parseTestOutput(stdout, '');
+  assert.ok(result.summary.includes('3/15 failed'));
+  assert.ok(result.summary.includes('widget > renders'));
+  assert.ok(result.summary.includes('api > timeout'));
+});
+
+test('parseTestOutput builds pass summary when all pass', () => {
+  const stdout = `
+# tests 10
+# pass 10
+# fail 0
+# duration_ms 500
+`;
+  const result = parseTestOutput(stdout, '');
+  assert.equal(result.summary, '10/10 passed');
+});
+
+test('parseTestOutput handles combined stdout+stderr input', () => {
+  const stdout = `
+ok 1 - test a
+# tests 2
+# pass 1
+# fail 1
+`;
+  const stderr = `
+not ok 2 - test b fails
+  AssertionError: boom
+`;
+  const result = parseTestOutput(stdout, stderr);
+  assert.equal(result.total, 2);
+  assert.equal(result.failed, 1);
+  assert.equal(result.failures.length, 1);
+  assert.equal(result.failures[0].name, 'test b fails');
 });
