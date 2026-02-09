@@ -28,7 +28,7 @@ Hydra orchestrates three AI coding agents (Claude Code CLI, Gemini CLI, Codex CL
 
 ```
 Operator Console (REPL)
-    ├── Concierge (OpenAI streaming chat, intent detection)
+    ├── Concierge (multi-provider streaming: OpenAI → Anthropic → Google fallback)
     └── Daemon (HTTP API, port 4173, event-sourced state)
          ├── Gemini  (analyst role, gemini-2.5-pro)
          ├── Codex   (implementer role, gpt-5.3)
@@ -43,11 +43,15 @@ Operator Console (REPL)
 - **`hydra-config.mjs`** — Central config with `HYDRA_ROOT`, project detection, `loadHydraConfig()`/`saveHydraConfig()`, `getRoleConfig(roleName)`. Config file: `hydra.config.json`.
 - **`hydra-council.mjs`** — 4-phase deliberation: propose (Claude) → critique (Gemini) → refine (Claude) → implement (Codex).
 - **`hydra-evolve.mjs`** — 7-phase autonomous improvement rounds with budget tracking, investigator self-healing, and knowledge accumulation.
-- **`hydra-concierge.mjs`** — Conversational front-end via OpenAI streaming. Detects `[DISPATCH]` intent to escalate. Routes unknown `:commands` for suggestion.
+- **`hydra-concierge.mjs`** — Multi-provider conversational front-end (OpenAI → Anthropic → Google fallback chain). Detects `[DISPATCH]` intent to escalate. Enriched system prompt with git info, recent completions, active workers. Bidirectional daemon communication via `POST /events/push`. Exports `getActiveProvider()`, `getConciergeModelLabel()`, `switchConciergeModel()`, `exportConversation()`, `getRecentContext()`.
+- **`hydra-concierge-providers.mjs`** — Provider abstraction layer. `detectAvailableProviders()`, `buildFallbackChain()`, `streamWithFallback()`. Lazy-loads provider modules via `await import()`.
+- **`hydra-anthropic.mjs`** — Streaming client for Anthropic Messages API. Mirrors `hydra-openai.mjs` pattern.
+- **`hydra-google.mjs`** — Streaming client for Google Gemini Generative Language API.
 - **`hydra-worker.mjs`** — `AgentWorker` class (EventEmitter). Headless background agent execution with claim→execute→report loop.
 - **`hydra-ui.mjs`** — All terminal rendering. Uses `picocolors` (`pc`) exclusively — never chalk. Exports `AGENT_COLORS`, `AGENT_ICONS`, `stripAnsi`, formatters.
 - **`hydra-statusbar.mjs`** — 5-line persistent ANSI footer. SSE event streaming preferred, polling fallback.
 - **`hydra-openai.mjs`** — Shared `streamCompletion()` for OpenAI API. Callers must always pass `cfg.model`.
+- **`hydra-sub-agents.mjs`** — Built-in virtual sub-agent definitions (security-reviewer, test-writer, doc-generator, researcher, evolve-researcher). Registered at startup via `registerBuiltInSubAgents()`.
 - **`hydra-env.mjs`** — Minimal `.env` loader. Auto-loads on import. Real env vars take priority.
 
 ### Dispatch Modes
@@ -60,7 +64,7 @@ Operator Console (REPL)
 
 ### Task Routing
 
-7 task types (planning, architecture, review, refactor, implementation, analysis, testing) × 3 agents with affinity scores. `classifyTask()` in hydra-agents.mjs selects the optimal agent.
+10 task types (planning, architecture, review, refactor, implementation, analysis, testing, security, research, documentation) × 3 physical agents + 5 virtual sub-agents with affinity scores. `classifyTask()` in hydra-agents.mjs selects the optimal agent. Virtual sub-agents (e.g. `security-reviewer`) resolve to their base physical agent for CLI dispatch via `resolvePhysicalAgent()`.
 
 ## Code Conventions
 

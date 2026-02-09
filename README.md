@@ -34,7 +34,7 @@ pwsh -File E:/Dev/Hydra/bin/hydra.ps1
 
 ## Features
 
-- **Concierge front-end**: Conversational AI layer powered by `gpt-5.2-codex` — answers questions directly, only escalates to agents when real work is needed
+- **Concierge front-end**: Multi-provider conversational AI layer (OpenAI → Anthropic → Google fallback chain) — answers questions directly, only escalates to agents when real work is needed
 - **Five orchestration modes**: Auto (triage + delegate), Council (multi-round deliberation), Dispatch (headless pipeline), Smart (auto-select model tier per prompt complexity), Chat (concierge conversation)
 - **Affinity-based task routing**: 7 task types x 3 agents = intelligent work assignment
 - **Per-agent model switching**: `hydra model claude=sonnet` to trade quality for speed/cost
@@ -57,7 +57,10 @@ pwsh -File E:/Dev/Hydra/bin/hydra.ps1
 - **Fast-path dispatch**: Simple prompts bypass council for lower latency single-agent handoffs
 - **Stale task detection**: Auto-detect tasks idle for 30+ minutes with `/tasks/stale` endpoint
 - **Ghost text prompts**: Claude Code CLI-style greyed-out placeholder hints that cycle contextually and disappear on keystroke
-- **Command-aware concierge**: Typos and near-miss commands are caught and corrected by the concierge AI instead of dead-end errors
+- **Command-aware concierge**: Typos and near-miss commands are caught locally via fuzzy matching (Levenshtein) before falling back to AI suggestion
+- **Runtime model switching**: `:chat model sonnet` switches the concierge provider/model on the fly
+- **Conversation export**: `:chat export` saves concierge history to JSON for analysis
+- **Token cost estimation**: Per-turn cost display after each concierge response
 - **5-line status bar**: Persistent terminal footer with agent activity, token gauge, dispatch context, and rolling event ticker
 - **Agent terminal auto-launch**: Operator spawns Windows Terminal/PowerShell windows per agent head
 - **HTTP daemon**: Shared state management with event sourcing, auto-archiving, and cycle detection
@@ -99,7 +102,10 @@ hydra/
       read-routes.mjs         # GET/SSE route handlers
       write-routes.mjs        # POST/mutating route handlers
     hydra-agents.mjs         # Agent registry, model management, verifier pairings
-    hydra-concierge.mjs      # Conversational concierge (OpenAI streaming, intent detection)
+    hydra-anthropic.mjs      # Anthropic Messages API streaming client
+    hydra-google.mjs         # Google Gemini API streaming client
+    hydra-concierge.mjs      # Multi-provider conversational concierge (intent detection, cost estimation)
+    hydra-concierge-providers.mjs # Provider abstraction + fallback chain orchestration
     hydra-config.mjs         # Project detection, config loading
     hydra-context.mjs        # Tiered context builders
     hydra-council.mjs        # Multi-round deliberation (with agent filtering + specs)
@@ -115,6 +121,7 @@ hydra/
     hydra-usage.mjs          # Token usage monitor
     hydra-utils.mjs          # Shared utilities (+ spec generation, async model calls)
     hydra-verification.mjs   # Project-aware verification command resolver
+    hydra-sub-agents.mjs     # Built-in virtual sub-agent definitions
     hydra-worktree.mjs       # Git worktree isolation per task
     orchestrator-client.mjs  # CLI client for daemon
     orchestrator-daemon.mjs  # HTTP server + event-sourced state manager
@@ -129,7 +136,9 @@ hydra/
   hydra.config.json          # Model + usage + worktree + MCP + verification + concierge config
   package.json
   test/
+    hydra-concierge-providers.test.mjs     # Provider detection + fallback chain tests
     hydra-mcp.test.mjs                     # MCP client unit tests
+    hydra-streaming-clients.test.mjs       # Anthropic/Google client + concierge multi-provider tests
     hydra-verification.test.mjs            # Verification resolver unit tests
     orchestrator-daemon.integration.test.mjs # Daemon endpoint integration tests
 ```

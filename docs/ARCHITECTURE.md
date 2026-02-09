@@ -27,9 +27,20 @@ orchestrator-daemon.mjs ──> hydra-agents, hydra-ui, hydra-config,
        │
        └──> daemon/read-routes.mjs + daemon/write-routes.mjs
 
-hydra-concierge.mjs ──> hydra-config, hydra-agents
+hydra-concierge.mjs ──> hydra-config, hydra-agents,
+       │                    hydra-concierge-providers
+       └──> Multi-provider fallback (OpenAI → Anthropic → Google)
+
+hydra-concierge-providers.mjs ──> hydra-config
        │
-       └──> OpenAI API (gpt-5.2-codex streaming chat completions)
+       ├──> hydra-openai.mjs (lazy)
+       ├──> hydra-anthropic.mjs (lazy)
+       └──> hydra-google.mjs (lazy)
+
+hydra-anthropic.mjs ──> Anthropic Messages API (streaming)
+hydra-google.mjs ──> Google Gemini Generative Language API (SSE streaming)
+
+hydra-sub-agents.mjs ──> hydra-agents (registerAgent), hydra-config
 
 hydra-mcp-server.mjs ──> HTTP daemon API (standalone stdio MCP server)
 
@@ -121,16 +132,18 @@ SMART_TIER_MAP:
 Temporarily override mode ──> run auto dispatch ──> restore original mode
 ```
 
-### Concierge (Conversational Front-End)
+### Concierge (Multi-Provider Conversational Front-End)
 
-The concierge is a conversational AI layer powered by `gpt-5.2-codex` that sits in front of the dispatch pipeline. It is active by default (`autoActivate: true`).
+The concierge is a multi-provider conversational AI layer with automatic fallback (OpenAI → Anthropic → Google). It sits in front of the dispatch pipeline and is active by default (`autoActivate: true`).
 
 ```
-User input at hydra⬢> prompt
+User input at hydra⬢[gpt-5.2]> prompt
      │
      ├── starts with ':'?
      │     │
      │     ├── recognized command ──> execute directly (bypass concierge)
+     │     │
+     │     ├── fuzzy match (Levenshtein ≤ 2) ──> suggest correct command locally
      │     │
      │     └── unrecognized ──> concierge suggests the correct command
      │
@@ -140,32 +153,53 @@ User input at hydra⬢> prompt
      │
      └── normal text ──> conciergeTurn(userMsg, context)
                │
-               ├── stream response via OpenAI SSE (fetch + ReadableStream)
+               ├── streamWithFallback() ──> try primary provider
+               │     │
+               │     ├── primary OK ──> stream response
+               │     ├── primary fail ──> try next in fallback chain
+               │     └── all fail ──> throw combined error
                │
                ├── response starts with [DISPATCH]?
                │     │
                │     ├── yes ──> extract cleaned prompt ──> dispatch pipeline
-               │     │            (auto/smart/council/handoff per current mode)
+               │     │            post concierge:dispatch event to daemon
                │     │
                │     └── no  ──> chat response streamed to user in blue
-               │                  (conversation stays in concierge)
+               │                  display cost estimate [~$0.0042]
                │
-               └── API error?
-                     │
-                     ├── 401/403 ──> auto-disable concierge, revert to normal prompt
-                     └── other   ──> show error, keep concierge active
+               ├── API error?
+               │     │
+               │     ├── 401/403 ──> auto-disable concierge, revert to normal prompt
+               │     └── other   ──> show error, keep concierge active
+               │
+               └── every 5 turns ──> post concierge:summary event to daemon
 ```
 
-The concierge maintains an in-memory conversation history (capped at 40 messages). Its system prompt is rebuilt every 30 seconds with live state: project name, mode, open tasks, and agent models. It includes a full command reference so it can suggest corrections for typos.
+The concierge maintains an in-memory conversation history (capped at 40 messages). Its system prompt is rebuilt with context-hash invalidation (fingerprint changes OR TTL expiry) and includes: project name, mode, open tasks, agent models, git branch/status, recent completions, recent errors, and active workers. It includes a full command reference for typo correction.
 
-Module: `lib/hydra-concierge.mjs`.
+**Provider fallback chain** (configurable via `concierge.fallbackChain`):
+1. OpenAI (`gpt-5.2-codex`) — primary
+2. Anthropic (`claude-sonnet-4-5-20250929`) — first fallback
+3. Google (`gemini-2.5-flash`) — last resort
+
+Provider modules are lazy-loaded via `await import()` to avoid loading unused ones.
+
+**Bidirectional communication**: The concierge posts events to the daemon via `POST /events/push`:
+- `concierge:dispatch` — when escalating to dispatch pipeline (includes conversation context)
+- `concierge:summary` — every 5 turns (turn count, topic, tokens used)
+- `concierge:error` — on provider errors
+- `concierge:model_switch` — when switching models at runtime
+
+**Prompt shows active model**: `hydra⬢[gpt-5.2]>` or `hydra⬢[sonnet ↓]>` (↓ indicates fallback).
+
+Modules: `lib/hydra-concierge.mjs`, `lib/hydra-concierge-providers.mjs`, `lib/hydra-anthropic.mjs`, `lib/hydra-google.mjs`.
 
 ### Ghost Text (Placeholder Prompts)
 
 The operator console shows greyed-out placeholder text after the cursor, similar to Claude Code CLI:
 
 ```
-hydra⬢> Chat with gpt-5.2-codex — prefix ! to dispatch
+hydra⬢[gpt-5.2]> Chat naturally — prefix ! to dispatch
          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
          dim ghost text, disappears on first keystroke
 ```
@@ -425,6 +459,7 @@ Event categories (auto-classified from event type/label):
 - `decision` — decision recording
 - `blocker` — blocker creation/resolution
 - `session` — session start, fork, spawn
+- `concierge` — concierge dispatch, summary, error, model switch events
 - `system` — daemon lifecycle, agent calls, archive, verification
 
 ### Event Replay

@@ -149,7 +149,10 @@ node lib/hydra-operator.mjs prompt="..." # One-shot mode
 | `:chat` | Toggle concierge on/off |
 | `:chat off` | Disable concierge |
 | `:chat reset` | Clear concierge conversation history |
-| `:chat stats` | Show concierge token usage |
+| `:chat stats` | Show concierge token usage + provider info |
+| `:chat model` | Show active model + fallback chain |
+| `:chat model <name>` | Switch concierge model (e.g. `sonnet`, `flash`, `gpt-5.2-codex`) |
+| `:chat export` | Export conversation to JSON file |
 | `:workers` | Show worker status |
 | `:workers start [agent]` | Start worker(s) |
 | `:workers stop [agent]` | Stop worker(s) |
@@ -164,21 +167,35 @@ node lib/hydra-operator.mjs prompt="..." # One-shot mode
 
 ### Concierge
 
-The concierge is a conversational AI layer powered by `gpt-5.2-codex` with `xhigh` reasoning effort. It is **active by default** — every prompt goes to Codex first before anything else.
+The concierge is a multi-provider conversational AI layer with automatic fallback: OpenAI → Anthropic → Google. It is **active by default** — every prompt goes through the concierge before anything else.
 
 **Behavior:**
 - Questions and discussion are answered directly by the concierge (no agent dispatch)
 - Work requests (code changes, debugging, etc.) are automatically escalated to the dispatch pipeline
-- Unrecognized `:commands` are routed to the concierge, which suggests the correct command
+- Unrecognized `:commands` are first matched locally via fuzzy matching (Levenshtein distance ≤ 2), then routed to the concierge for suggestion
 - Prefix with `!` to bypass the concierge and dispatch directly: `!fix the auth bug`
+- Every 5 turns, a summary event is posted to the daemon for agent awareness
+- On dispatch, conversation context (last 3 messages) is included so agents understand why
 
 **Visual indicators:**
-- Prompt changes to `hydra⬢>` when concierge is active
+- Prompt shows active model: `hydra⬢[gpt-5.2]>` (or `hydra⬢[sonnet ↓]>` for fallback)
 - Status bar mode icon shows `⬢` (chat mode)
-- Concierge responses are streamed in blue
+- Concierge responses are streamed in blue with cost estimate `[~$0.0042]`
+- Welcome message on first activation shows model, quick help, and available commands
+- Streaming spinner appears while waiting for first response token
 - Ghost text placeholder hints cycle contextually after each prompt
 
-**Requires:** `OPENAI_API_KEY` environment variable. Without it, concierge is unavailable and prompts go directly to the dispatch pipeline.
+**Model switching:**
+- `:chat model` — display active model and full fallback chain with availability
+- `:chat model sonnet` — switch to Anthropic Sonnet at runtime
+- `:chat model flash` — switch to Google Gemini Flash
+- `:chat model gpt-5.2-codex` — switch to specific model ID
+
+**Conversation export:**
+- `:chat export` — saves conversation history to `docs/coordination/concierge_export_<timestamp>.json`
+- Includes provider info, turn count, stats, and all messages
+
+**Requires:** At least one API key: `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GEMINI_API_KEY`/`GOOGLE_API_KEY`. The concierge uses whichever providers are available, falling through the chain. Without any key, concierge is unavailable and prompts go directly to the dispatch pipeline.
 
 ### Operator Modes
 
@@ -313,7 +330,14 @@ Exit code: 0 if normal/warning, 1 if critical.
     "model": "gpt-5.2-codex",
     "reasoningEffort": "xhigh",
     "maxHistoryMessages": 40,
-    "autoActivate": true
+    "autoActivate": true,
+    "fallbackChain": [
+      { "provider": "openai", "model": "gpt-5.2-codex" },
+      { "provider": "anthropic", "model": "claude-sonnet-4-5-20250929" },
+      { "provider": "google", "model": "gemini-2.5-flash" }
+    ],
+    "showProviderInPrompt": true,
+    "welcomeMessage": true
   },
   "workers": {
     "permissionMode": "auto-edit",
@@ -395,10 +419,13 @@ The `aliases` section maps shorthand names to full model IDs per agent. These ar
 ### Concierge
 
 - `concierge.enabled=true`: Enable the concierge feature (set `false` to remove it entirely)
-- `concierge.model="gpt-5.2-codex"`: OpenAI model for the conversational layer
+- `concierge.model="gpt-5.2-codex"`: Primary model for the conversational layer
 - `concierge.reasoningEffort="xhigh"`: Reasoning effort level sent to the API
 - `concierge.maxHistoryMessages=40`: Maximum conversation history messages (oldest pairs trimmed)
 - `concierge.autoActivate=true`: Concierge is on at startup (set `false` to require `:chat` to enable)
+- `concierge.fallbackChain=[...]`: Ordered list of `{provider, model}` entries for automatic failover
+- `concierge.showProviderInPrompt=true`: Show active model name in the operator prompt
+- `concierge.welcomeMessage=true`: Show welcome message on first concierge activation
 
 ### Workers
 
@@ -472,6 +499,7 @@ One-shot mode: `pwsh -File bin/hydra.ps1 -Prompt "Your objective"`
 | `POST /session/resume` | Resume a paused session |
 | `POST /archive` | Archive completed items |
 | `POST /state/archive` | Archive completed tasks/handoffs to file |
+| `POST /events/push` | Push concierge events (dispatch, summary, error, model_switch) |
 | `POST /shutdown` | Graceful daemon shutdown |
 
 ## Hydra MCP Server

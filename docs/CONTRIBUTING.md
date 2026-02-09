@@ -207,14 +207,25 @@ The MCP server delegates to the daemon HTTP API — it should not access state d
 
 ## Concierge Module
 
-The concierge (`lib/hydra-concierge.mjs`) is the conversational front-end powered by OpenAI's `gpt-5.2-codex`. Key points for contributors:
+The concierge system spans multiple modules for multi-provider resilience:
 
-- **System prompt**: Rebuilt every 30s with live state. Contains a full command reference — keep it in sync when adding/renaming commands.
-- **Intent detection**: If the model's response starts with `[DISPATCH]`, the text after it becomes the dispatch prompt. Otherwise, the response is streamed directly to the user.
-- **Streaming**: Uses native `fetch()` to `https://api.openai.com/v1/chat/completions` with `stream: true`. No external HTTP dependencies.
+- **`lib/hydra-concierge.mjs`** — Main concierge logic: conversation management, system prompt building, event posting, cost estimation, model switching, conversation export.
+- **`lib/hydra-concierge-providers.mjs`** — Provider abstraction: `detectAvailableProviders()`, `buildFallbackChain()`, `streamWithFallback()`. Lazy-loads provider modules.
+- **`lib/hydra-anthropic.mjs`** — Anthropic Messages API streaming client.
+- **`lib/hydra-google.mjs`** — Google Gemini API streaming client.
+- **`lib/hydra-openai.mjs`** — OpenAI API streaming client (also used by concierge).
+
+Key points for contributors:
+
+- **System prompt**: Rebuilt on context-hash change or TTL expiry. Contains live state (git branch, recent completions, errors, active workers) and full command reference — keep it in sync when adding/renaming commands.
+- **Intent detection**: If the model's response starts with `[DISPATCH]`, the text after it becomes the dispatch prompt. A `concierge:dispatch` event is posted to the daemon with conversation context. Otherwise, the response is streamed directly to the user.
+- **Streaming**: Uses `streamWithFallback()` which iterates the fallback chain (OpenAI → Anthropic → Google). Each provider module uses native `fetch()` — no external HTTP dependencies.
 - **History**: In-memory array of `{role, content}` messages, capped at `maxHistoryMessages` (default 40). Trimmed by removing oldest user+assistant pairs.
-- **Config**: `concierge` section in `hydra.config.json` — model, reasoning effort, history cap, auto-activate toggle.
-- **Ghost text**: Prompt placeholder hints are defined in `hydra-operator.mjs` `interactiveLoop()` as `GHOST_HINTS_CONCIERGE` and `GHOST_HINTS_NORMAL` arrays.
+- **Config**: `concierge` section in `hydra.config.json` — model, reasoning effort, history cap, auto-activate toggle, fallback chain, show provider in prompt, welcome message.
+- **Fallback chain**: Configurable array of `{provider, model}` entries in `concierge.fallbackChain`. `streamWithFallback()` tries each in order, catches errors per provider, returns first success.
+- **Cost estimation**: `COST_PER_1K` lookup table in `hydra-concierge.mjs`. `conciergeTurn()` returns `estimatedCost` in its result object.
+- **Bidirectional events**: `postConciergeEvent()` posts to `POST /events/push` (best-effort, 2s timeout). Event types: `concierge:dispatch`, `concierge:summary`, `concierge:error`, `concierge:model_switch`.
+- **Ghost text**: Prompt placeholder hints are defined in `hydra-operator.mjs` `interactiveLoop()` as `GHOST_HINTS_CONCIERGE` and `GHOST_HINTS_NORMAL` arrays. Uses `getConciergeModelLabel()` for dynamic model display.
 
 ## Code Style
 
@@ -241,6 +252,8 @@ This runs all test files under `test/` using Node.js built-in test runner (`node
 - `test/orchestrator-daemon.integration.test.mjs` — Integration tests for all daemon endpoints (task CRUD, claiming, checkpoints, events, sessions, worktrees)
 - `test/hydra-mcp.test.mjs` — Unit tests for the MCP client (JSON-RPC over stdio with mock server)
 - `test/hydra-verification.test.mjs` — Unit tests for the verification command resolver
+- `test/hydra-concierge-providers.test.mjs` — Provider detection, fallback chain building, provider labels
+- `test/hydra-streaming-clients.test.mjs` — Anthropic/Google streaming client exports, concierge multi-provider exports and model switching
 
 ### Writing Tests
 
