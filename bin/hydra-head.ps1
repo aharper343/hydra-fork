@@ -139,6 +139,8 @@ function Get-ModelFlags {
   }
 }
 
+$MinSessionSeconds = 30  # sessions shorter than this trigger restart prompt
+
 function Start-AgentSession {
   param([string]$Prompt)
 
@@ -159,6 +161,91 @@ function Start-AgentSession {
     }
     default {
       throw "Unsupported agent: $Agent"
+    }
+  }
+}
+
+function Read-TranscriptOutput {
+  param([string]$Path)
+  if (-not (Test-Path $Path)) { return "" }
+  try {
+    $lines = Get-Content $Path -ErrorAction SilentlyContinue
+    if (-not $lines -or $lines.Count -lt 6) { return "" }
+    # Strip PowerShell transcript header (first 5 lines) and footer (last 4 lines)
+    $body = $lines[5..($lines.Count - 5)] -join "`n"
+    # Strip ANSI escape codes for cleaner storage
+    $body = $body -replace "$([char]27)\[[0-9;]*[a-zA-Z]", ''
+    return $body
+  } catch { return "" }
+}
+
+function Run-TrackedSession {
+  param(
+    [string]$Prompt,
+    [string]$TaskId,
+    [string]$Label
+  )
+
+  $transcriptDir = Join-Path $env:TEMP "hydra-heads"
+  if (-not (Test-Path $transcriptDir)) { New-Item -ItemType Directory -Path $transcriptDir -Force | Out-Null }
+  $transcriptPath = Join-Path $transcriptDir "$Agent-$(Get-Date -Format 'yyyyMMdd-HHmmss').txt"
+
+  $shouldRestart = $true
+  while ($shouldRestart) {
+    $shouldRestart = $false
+    $startTime = Get-Date
+
+    try { Start-Transcript -Path $transcriptPath -Force | Out-Null } catch {}
+    Start-AgentSession -Prompt $Prompt
+    try { Stop-Transcript | Out-Null } catch {}
+
+    $elapsed = (Get-Date) - $startTime
+    $durationMs = [int]$elapsed.TotalMilliseconds
+    $durationSec = [int]$elapsed.TotalSeconds
+
+    # Read transcript output
+    $output = Read-TranscriptOutput -Path $transcriptPath
+
+    # Determine result status
+    $resultStatus = "completed"
+    if ($durationSec -lt $MinSessionSeconds) {
+      $resultStatus = "aborted"
+    }
+
+    # POST result back to daemon
+    if ($TaskId) {
+      try {
+        Invoke-HydraPost -Route "/task/result" -Body @{
+          taskId = $TaskId
+          agent = $Agent
+          output = if ($output.Length -gt 6000) { $output.Substring($output.Length - 6000) } else { $output }
+          status = $resultStatus
+          durationMs = $durationMs
+        } | Out-Null
+      } catch {
+        Write-Output "  ${DIM}(could not post result: $($_.Exception.Message))${RESET}"
+      }
+    }
+
+    # Clean up transcript
+    try { Remove-Item $transcriptPath -ErrorAction SilentlyContinue } catch {}
+
+    # Short session protection
+    if ($durationSec -lt $MinSessionSeconds) {
+      Write-Output ""
+      Write-Output "  ${YELLOW}${Icon}${RESET} ${BOLD}Session ended after ${durationSec}s${RESET} ${DIM}(< ${MinSessionSeconds}s threshold)${RESET}"
+      Write-Output "  ${DIM}This may have been an accidental keypress.${RESET}"
+      Write-Output ""
+      Write-Output "  ${Color}[R]${RESET}estart this task    ${DIM}[S]${RESET}kip to listen mode"
+      $choice = Read-Host "  "
+      if ($choice -match '^[Rr]') {
+        Write-Output "  ${Color}${Icon}${RESET} ${DIM}Restarting session for ${Label}...${RESET}"
+        $shouldRestart = $true
+      } else {
+        Write-Output "  ${DIM}Skipping. Returning to listen mode...${RESET}"
+      }
+    } else {
+      Write-Output "  ${DIM}Session exited after $([math]::Round($elapsed.TotalMinutes, 1))m. Returning to listen mode...${RESET}"
     }
   }
 }
@@ -186,6 +273,11 @@ while ($true) {
       $handoffId = [string]$handoff.id
       $promptText = Build-HandoffPrompt -Handoff $handoff
 
+      # Resolve task ID from handoff (for result tracking)
+      $relatedTaskId = ""
+      if ($next.relatedTask) { $relatedTaskId = [string]$next.relatedTask.id }
+      elseif ($handoff.tasks -and $handoff.tasks.Count -gt 0) { $relatedTaskId = [string]$handoff.tasks[0] }
+
       Invoke-HydraPost -Route "/handoff/ack" -Body @{
         handoffId = $handoffId
         agent = $Agent
@@ -193,8 +285,7 @@ while ($true) {
 
       Write-Output ""
       Write-Output "  ${Color}${Icon}${RESET} ${BOLD}Picked up handoff ${YELLOW}$handoffId${RESET} ${DIM}$([char]0x2192) launching session...${RESET}"
-      Start-AgentSession -Prompt $promptText
-      Write-Output "  ${DIM}Session exited. Returning to listen mode...${RESET}"
+      Run-TrackedSession -Prompt $promptText -TaskId $relatedTaskId -Label "handoff $handoffId"
 
       $lastNoticeKey = ""
     } elseif ($action -eq "claim_owned_task" -and $next.task) {
@@ -216,8 +307,7 @@ while ($true) {
 
       Write-Output ""
       Write-Output "  ${Color}${Icon}${RESET} ${BOLD}Claimed task ${YELLOW}$taskId${RESET} ${DIM}($taskTitle)${RESET} ${DIM}$([char]0x2192) launching session...${RESET}"
-      Start-AgentSession -Prompt $promptText
-      Write-Output "  ${DIM}Session exited. Returning to listen mode...${RESET}"
+      Run-TrackedSession -Prompt $promptText -TaskId $taskId -Label "task $taskId"
 
       $lastNoticeKey = ""
     } elseif ($action -eq "continue_task" -and $next.task) {
