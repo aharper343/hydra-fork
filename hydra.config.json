@@ -91,7 +91,7 @@
   },
   "concierge": {
     "enabled": true,
-    "model": "gpt-5.2-codex",
+    "model": "gpt-5",
     "reasoningEffort": "xhigh",
     "maxHistoryMessages": 40,
     "autoActivate": true
@@ -139,6 +139,6 @@
     "maxTasks": 5,
     "maxHours": 6,
     "perTaskTimeoutMin": 15,
-    "handoffModel": "gpt-5.2-codex"
+    "handoffModel": "o4-mini"
   }
 }
