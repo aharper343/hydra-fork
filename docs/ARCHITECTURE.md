@@ -27,6 +27,10 @@ orchestrator-daemon.mjs ──> hydra-agents, hydra-ui, hydra-config,
        │
        └──> daemon/read-routes.mjs + daemon/write-routes.mjs
 
+hydra-concierge.mjs ──> hydra-config, hydra-agents
+       │
+       └──> OpenAI API (gpt-5.3-codex streaming chat completions)
+
 hydra-mcp-server.mjs ──> HTTP daemon API (standalone stdio MCP server)
 
 hydra-worktree.mjs ──> git CLI (child_process.execSync)
@@ -116,6 +120,62 @@ SMART_TIER_MAP:
      v
 Temporarily override mode ──> run auto dispatch ──> restore original mode
 ```
+
+### Concierge (Conversational Front-End)
+
+The concierge is a conversational AI layer powered by `gpt-5.3-codex` that sits in front of the dispatch pipeline. It is active by default (`autoActivate: true`).
+
+```
+User input at hydra⬢> prompt
+     │
+     ├── starts with ':'?
+     │     │
+     │     ├── recognized command ──> execute directly (bypass concierge)
+     │     │
+     │     └── unrecognized ──> concierge suggests the correct command
+     │
+     ├── starts with '!'?
+     │     │
+     │     └── strip prefix ──> bypass concierge ──> dispatch pipeline directly
+     │
+     └── normal text ──> conciergeTurn(userMsg, context)
+               │
+               ├── stream response via OpenAI SSE (fetch + ReadableStream)
+               │
+               ├── response starts with [DISPATCH]?
+               │     │
+               │     ├── yes ──> extract cleaned prompt ──> dispatch pipeline
+               │     │            (auto/smart/council/handoff per current mode)
+               │     │
+               │     └── no  ──> chat response streamed to user in blue
+               │                  (conversation stays in concierge)
+               │
+               └── API error?
+                     │
+                     ├── 401/403 ──> auto-disable concierge, revert to normal prompt
+                     └── other   ──> show error, keep concierge active
+```
+
+The concierge maintains an in-memory conversation history (capped at 40 messages). Its system prompt is rebuilt every 30 seconds with live state: project name, mode, open tasks, and agent models. It includes a full command reference so it can suggest corrections for typos.
+
+Module: `lib/hydra-concierge.mjs`.
+
+### Ghost Text (Placeholder Prompts)
+
+The operator console shows greyed-out placeholder text after the cursor, similar to Claude Code CLI:
+
+```
+hydra⬢> Chat with gpt-5.3-codex — prefix ! to dispatch
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         dim ghost text, disappears on first keystroke
+```
+
+Implementation:
+- `rl.prompt()` is wrapped to append dim ghost text via ANSI after each fresh prompt
+- A one-shot `stdin` data listener fires `\x1b[K` (erase to EOL) on the first keystroke
+- `rl.prompt(true)` (mid-typing refreshes) does NOT show ghost text
+- Messages rotate from a contextual pool (concierge-aware vs normal hints)
+- Ghost text cleanup listener is removed on `rl.close()`
 
 ### Agent Terminal Auto-Launch
 

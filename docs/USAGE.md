@@ -78,12 +78,33 @@ node lib/orchestrator-client.mjs model claude=sonnet gemini=flash
 
 # Reset to default
 node lib/orchestrator-client.mjs model claude=default
+
+# Interactive model picker (arrow keys, type-to-filter)
+node lib/orchestrator-client.mjs model:select
+node lib/orchestrator-client.mjs model:select claude
+
+# List all available models per agent (read-only)
+node lib/hydra-models.mjs
+node lib/hydra-models.mjs claude
+# or: npm run models
 ```
+
+**Interactive model selector** (`model:select` / `:model:select`):
+1. Pick an agent (or pass agent name to skip)
+2. Browse all available models — discovered via REST API, CLI query, or config fallback
+3. Type to filter the model list
+4. Select reasoning effort level (low / medium / high / xhigh)
+5. Selection sets mode to `custom` and persists to `hydra.config.json`
 
 **Shorthand aliases:**
 - Gemini: `pro`, `flash`, `default`, `fast`
 - Codex: `gpt-5`, `gpt-5.3`, `o4-mini`, `default`, `fast`, `cheap`
 - Claude: `opus`, `sonnet`, `haiku`, `default`, `fast`, `cheap`
+
+**Reasoning effort** (Codex only — passed as `--reasoning-effort` CLI flag):
+- Levels: `low`, `medium`, `high`, `xhigh`
+- Set via interactive picker or config: `models.<agent>.reasoningEffort`
+- Shown in `:model` display, model listings, and status bar
 
 ### Utility
 
@@ -124,9 +145,39 @@ node lib/hydra-operator.mjs prompt="..." # One-shot mode
 | `:pause [reason]` | Pause the active session |
 | `:unpause` | Resume a paused session |
 | `:resume` | Ack handoffs, reset stale tasks, launch agents |
+| `:chat` | Toggle concierge on/off |
+| `:chat off` | Disable concierge |
+| `:chat reset` | Clear concierge conversation history |
+| `:chat stats` | Show concierge token usage |
+| `:workers` | Show worker status |
+| `:workers start [agent]` | Start worker(s) |
+| `:workers stop [agent]` | Stop worker(s) |
+| `:workers restart` | Restart all workers |
+| `:workers mode <mode>` | Change permission mode (auto-edit/full-auto) |
+| `:watch <agent>` | Open visible terminal for agent observation |
+| `:confirm` | Show/toggle dispatch confirmations |
 | `:quit` | Exit console |
-| `<any text>` | Dispatch as prompt |
+| `<any text>` | Chat with concierge (or dispatch if concierge is off) |
+| `!<prompt>` | Force dispatch (bypass concierge) |
 | `agents=claude,gemini <prompt>` | Dispatch with agent filter |
+
+### Concierge
+
+The concierge is a conversational AI layer powered by `gpt-5.3-codex` with `xhigh` reasoning effort. It is **active by default** — every prompt goes to Codex first before anything else.
+
+**Behavior:**
+- Questions and discussion are answered directly by the concierge (no agent dispatch)
+- Work requests (code changes, debugging, etc.) are automatically escalated to the dispatch pipeline
+- Unrecognized `:commands` are routed to the concierge, which suggests the correct command
+- Prefix with `!` to bypass the concierge and dispatch directly: `!fix the auth bug`
+
+**Visual indicators:**
+- Prompt changes to `hydra⬢>` when concierge is active
+- Status bar mode icon shows `⬢` (chat mode)
+- Concierge responses are streamed in blue
+- Ghost text placeholder hints cycle contextually after each prompt
+
+**Requires:** `OPENAI_API_KEY` environment variable. Without it, concierge is unavailable and prompts go directly to the dispatch pipeline.
 
 ### Operator Modes
 
@@ -135,6 +186,7 @@ node lib/hydra-operator.mjs prompt="..." # One-shot mode
 - **council**: Full multi-round deliberation (Claude propose -> Gemini critique -> Claude refine -> Codex implement)
 - **dispatch**: Headless pipeline (Claude coordinate -> Gemini critique -> Codex synthesize)
 - **smart**: Auto-selects model tier per prompt complexity (simple->economy, medium->balanced, complex->performance)
+- **chat**: Concierge conversation mode (set automatically when concierge is active)
 
 ### Status Bar
 
@@ -252,6 +304,20 @@ Exit code: 0 if normal/warning, 1 if critical.
   "stats": {
     "retentionDays": 30
   },
+  "concierge": {
+    "enabled": true,
+    "model": "gpt-5.3-codex",
+    "reasoningEffort": "xhigh",
+    "maxHistoryMessages": 40,
+    "autoActivate": true
+  },
+  "workers": {
+    "permissionMode": "auto-edit",
+    "autoStart": true,
+    "pollIntervalMs": 1500,
+    "maxOutputBufferKB": 8,
+    "autoChain": true
+  },
   "worktrees": {
     "enabled": false,
     "basePath": ".hydra/worktrees",
@@ -313,6 +379,22 @@ The `aliases` section maps shorthand names to full model IDs per agent. These ar
 - `crossModelVerification.enabled=true`: Enable cross-model review pipeline
 - `crossModelVerification.mode`: `"always"` | `"on-complex"` (default) | `"off"`
 - `crossModelVerification.pairings`: Maps each producer agent to its verifier agent
+
+### Concierge
+
+- `concierge.enabled=true`: Enable the concierge feature (set `false` to remove it entirely)
+- `concierge.model="gpt-5.3-codex"`: OpenAI model for the conversational layer
+- `concierge.reasoningEffort="xhigh"`: Reasoning effort level sent to the API
+- `concierge.maxHistoryMessages=40`: Maximum conversation history messages (oldest pairs trimmed)
+- `concierge.autoActivate=true`: Concierge is on at startup (set `false` to require `:chat` to enable)
+
+### Workers
+
+- `workers.permissionMode="auto-edit"`: Default permission mode for headless workers
+- `workers.autoStart=true`: Auto-start workers after dispatch
+- `workers.pollIntervalMs=1500`: Daemon polling interval for workers
+- `workers.maxOutputBufferKB=8`: Max output buffer per worker
+- `workers.autoChain=true`: Workers auto-chain to next task after completing one
 
 ### MCP (Model Context Protocol)
 

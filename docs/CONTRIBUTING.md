@@ -172,6 +172,8 @@ if (line === ':mycommand' || line.startsWith(':mycommand ')) {
 }
 ```
 
+3. **Add to concierge system prompt** in `lib/hydra-concierge.mjs` `buildSystemPrompt()` — add the command to the command reference list so the concierge can suggest it for typos/near-misses.
+
 ## Adding an MCP Server Tool
 
 To expose a new tool via the Hydra MCP server (`lib/hydra-mcp-server.mjs`):
@@ -202,6 +204,17 @@ case 'hydra_my_tool': {
 ```
 
 The MCP server delegates to the daemon HTTP API — it should not access state directly.
+
+## Concierge Module
+
+The concierge (`lib/hydra-concierge.mjs`) is the conversational front-end powered by OpenAI's `gpt-5.3-codex`. Key points for contributors:
+
+- **System prompt**: Rebuilt every 30s with live state. Contains a full command reference — keep it in sync when adding/renaming commands.
+- **Intent detection**: If the model's response starts with `[DISPATCH]`, the text after it becomes the dispatch prompt. Otherwise, the response is streamed directly to the user.
+- **Streaming**: Uses native `fetch()` to `https://api.openai.com/v1/chat/completions` with `stream: true`. No external HTTP dependencies.
+- **History**: In-memory array of `{role, content}` messages, capped at `maxHistoryMessages` (default 40). Trimmed by removing oldest user+assistant pairs.
+- **Config**: `concierge` section in `hydra.config.json` — model, reasoning effort, history cap, auto-activate toggle.
+- **Ghost text**: Prompt placeholder hints are defined in `hydra-operator.mjs` `interactiveLoop()` as `GHOST_HINTS_CONCIERGE` and `GHOST_HINTS_NORMAL` arrays.
 
 ## Code Style
 

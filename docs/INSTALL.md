@@ -102,11 +102,15 @@ Add these scripts to your project's `package.json`:
 | `HYDRA_CLAUDE_MODEL` | (config) | Override Claude model |
 | `HYDRA_GEMINI_MODEL` | (config) | Override Gemini model |
 | `HYDRA_CODEX_MODEL` | (config) | Override Codex model |
+| `OPENAI_API_KEY` | (none) | Required for concierge (gpt-5.3-codex) |
 
 ## Troubleshooting
 
 **"Not a valid project directory"**
 Hydra needs at least one project marker file (package.json, .git, CLAUDE.md, etc.) in the target directory.
+
+**Concierge unavailable**
+Set the `OPENAI_API_KEY` environment variable with a valid OpenAI API key. The concierge requires this to call `gpt-5.3-codex`. Without it, the operator falls back to direct dispatch (no conversational layer).
 
 **Agent CLI not found**
 Ensure the agent CLI is installed globally and available in PATH. Run `node lib/sync.mjs doctor` to check.

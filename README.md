@@ -34,7 +34,8 @@ pwsh -File E:/Dev/Hydra/bin/hydra.ps1
 
 ## Features
 
-- **Four orchestration modes**: Auto (triage + delegate), Council (multi-round deliberation), Dispatch (headless pipeline), Smart (auto-select model tier per prompt complexity)
+- **Concierge front-end**: Conversational AI layer powered by `gpt-5.3-codex` — answers questions directly, only escalates to agents when real work is needed
+- **Five orchestration modes**: Auto (triage + delegate), Council (multi-round deliberation), Dispatch (headless pipeline), Smart (auto-select model tier per prompt complexity), Chat (concierge conversation)
 - **Affinity-based task routing**: 7 task types x 3 agents = intelligent work assignment
 - **Per-agent model switching**: `hydra model claude=sonnet` to trade quality for speed/cost
 - **Per-command agent selection**: `agents=claude,gemini` to control which agents participate per-prompt
@@ -54,6 +55,8 @@ pwsh -File E:/Dev/Hydra/bin/hydra.ps1
 - **Session pause/resume**: Pause active sessions with reason tracking, resume with stale recovery
 - **Fast-path dispatch**: Simple prompts bypass council for lower latency single-agent handoffs
 - **Stale task detection**: Auto-detect tasks idle for 30+ minutes with `/tasks/stale` endpoint
+- **Ghost text prompts**: Claude Code CLI-style greyed-out placeholder hints that cycle contextually and disappear on keystroke
+- **Command-aware concierge**: Typos and near-miss commands are caught and corrected by the concierge AI instead of dead-end errors
 - **5-line status bar**: Persistent terminal footer with agent activity, token gauge, dispatch context, and rolling event ticker
 - **Agent terminal auto-launch**: Operator spawns Windows Terminal/PowerShell windows per agent head
 - **HTTP daemon**: Shared state management with event sourcing, auto-archiving, and cycle detection
@@ -95,6 +98,7 @@ hydra/
       read-routes.mjs         # GET/SSE route handlers
       write-routes.mjs        # POST/mutating route handlers
     hydra-agents.mjs         # Agent registry, model management, verifier pairings
+    hydra-concierge.mjs      # Conversational concierge (OpenAI streaming, intent detection)
     hydra-config.mjs         # Project detection, config loading
     hydra-context.mjs        # Tiered context builders
     hydra-council.mjs        # Multi-round deliberation (with agent filtering + specs)
@@ -119,7 +123,7 @@ hydra/
     CONTRIBUTING.md          # Extension guide
     coordination/
       specs/                 # Generated spec documents for complex prompts
-  hydra.config.json          # Model + usage + worktree + MCP + verification config
+  hydra.config.json          # Model + usage + worktree + MCP + verification + concierge config
   package.json
   test/
     hydra-mcp.test.mjs                     # MCP client unit tests
