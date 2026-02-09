@@ -6,6 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Always work on `dev`. Never commit to or switch to `master` unless explicitly told (e.g. "merge to master", "push d>m").
 
+### Commit Rules
+
+1. **Update documentation before every commit.** Before staging and committing, review what changed and update the relevant docs:
+   - `CLAUDE.md` — if architecture, modules, exports, commands, or conventions changed.
+   - `README.md` — if user-facing features, setup steps, or usage changed.
+   - Inline code comments — only where logic isn't self-evident.
+   - Skip doc updates only if the change is purely cosmetic or has zero doc impact.
+
+2. **Always commit to `dev` first.** Never commit directly to `master`. When the user asks to merge or push to master, the flow is:
+   - Ensure all changes are committed on `dev`.
+   - Checkout `master`, merge `dev` into `master`, then switch back to `dev`.
+   - Shorthand: "push d>m" or "merge to master" triggers this flow.
+
 ## Commands
 
 ```bash
@@ -53,6 +66,15 @@ Operator Console (REPL)
 - **`hydra-openai.mjs`** — Shared `streamCompletion()` for OpenAI API. Callers must always pass `cfg.model`.
 - **`hydra-sub-agents.mjs`** — Built-in virtual sub-agent definitions (security-reviewer, test-writer, doc-generator, researcher, evolve-researcher). Registered at startup via `registerBuiltInSubAgents()`.
 - **`hydra-env.mjs`** — Minimal `.env` loader. Auto-loads on import. Real env vars take priority.
+- **`hydra-shared/`** — Shared infrastructure for nightly and evolve pipelines:
+  - `git-ops.mjs` — Git helpers (parameterized baseBranch): `git()`, `getCurrentBranch()`, `checkoutBranch()`, `createBranch()`, `getBranchStats()`, `smartMerge()`, etc.
+  - `constants.mjs` — `BASE_PROTECTED_FILES`, `BASE_PROTECTED_PATTERNS`, `BLOCKED_COMMANDS`
+  - `guardrails.mjs` — `verifyBranch()`, `isCleanWorkingTree()`, `buildSafetyPrompt()`, `scanBranchViolations()`
+  - `budget-tracker.mjs` — Base `BudgetTracker` class with configurable thresholds
+  - `agent-executor.mjs` — Unified `executeAgent()` with stdin piping, stderr capture, progress ticking
+  - `review-common.mjs` — Interactive review helpers: `handleBranchAction()`, `loadLatestReport()`, `cleanBranches()`
+- **`hydra-investigator.mjs`** — Re-exports from `hydra-evolve-investigator.mjs`. Self-healing failure diagnosis (shared).
+- **`hydra-knowledge.mjs`** — Re-exports from `hydra-evolve-knowledge.mjs`. Persistent knowledge base (shared).
 
 ### Dispatch Modes
 
