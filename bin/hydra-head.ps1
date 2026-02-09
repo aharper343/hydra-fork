@@ -18,13 +18,14 @@ $RESET   = "$ESC[0m"
 $BOLD    = "$ESC[1m"
 $DIM     = "$ESC[90m"
 $RED     = "$ESC[91m"
+$ORANGE  = "$ESC[38;2;232;134;58m"  # Claude Code orange (#E8863A)
 $GREEN   = "$ESC[92m"
 $YELLOW  = "$ESC[93m"
 $MAGENTA = "$ESC[95m"
 $CYAN    = "$ESC[96m"
 
 $AgentColors = @{
-  claude = $MAGENTA
+  claude = $ORANGE
   gemini = $CYAN
   codex  = $GREEN
 }
@@ -192,6 +193,29 @@ while ($true) {
 
       Write-Output ""
       Write-Output "  ${Color}${Icon}${RESET} ${BOLD}Picked up handoff ${YELLOW}$handoffId${RESET} ${DIM}$([char]0x2192) launching session...${RESET}"
+      Start-AgentSession -Prompt $promptText
+      Write-Output "  ${DIM}Session exited. Returning to listen mode...${RESET}"
+
+      $lastNoticeKey = ""
+    } elseif ($action -eq "claim_owned_task" -and $next.task) {
+      $task = $next.task
+      $taskId = [string]$task.id
+      $taskTitle = [string]$task.title
+      $taskNotes = [string]$task.notes
+
+      # Claim the task (move to in_progress)
+      Invoke-HydraPost -Route "/task/claim" -Body @{
+        taskId = $taskId
+        agent = $Agent
+      } | Out-Null
+
+      # Build prompt from task data
+      $promptText = "Hydra task: $taskId`nTitle: $taskTitle"
+      if ($taskNotes) { $promptText += "`nNotes: $taskNotes" }
+      $promptText += "`n`nWork this now. If cross-head discussion is needed, run:`nnpm run hydra:council -- prompt=`"Council request from $($Agent): <question or conflict>`" rounds=2"
+
+      Write-Output ""
+      Write-Output "  ${Color}${Icon}${RESET} ${BOLD}Claimed task ${YELLOW}$taskId${RESET} ${DIM}($taskTitle)${RESET} ${DIM}$([char]0x2192) launching session...${RESET}"
       Start-AgentSession -Prompt $promptText
       Write-Output "  ${DIM}Session exited. Returning to listen mode...${RESET}"
 
