@@ -6,21 +6,21 @@
       "default": "gemini-2.5-pro",
       "fast": "gemini-2.5-flash",
       "cheap": "gemini-2.5-flash",
-      "active": "gemini-3-flash",
+      "active": "default",
       "reasoningEffort": "high"
     },
     "codex": {
       "default": "gpt-5.3",
       "fast": "o4-mini",
       "cheap": "o4-mini",
-      "active": "gpt-5.2-pro-2025-12-11",
+      "active": "default",
       "reasoningEffort": "xhigh"
     },
     "claude": {
       "default": "claude-opus-4-6",
       "fast": "claude-sonnet-4-5-20250929",
       "cheap": "claude-haiku-4-5-20251001",
-      "active": "claude-opus-4-6",
+      "active": "default",
       "reasoningEffort": "high"
     }
   },
@@ -28,6 +28,10 @@
     "gemini": {
       "pro": "gemini-2.5-pro",
       "flash": "gemini-2.5-flash",
+      "2.5-pro": "gemini-2.5-pro",
+      "2.5-flash": "gemini-2.5-flash",
+      "3-pro": "gemini-3-pro-preview",
+      "3-flash": "gemini-3-flash-preview",
       "g3pro": "gemini-3-pro",
       "g3flash": "gemini-3-flash",
       "thinking": "gemini-3-pro-deep-think"
@@ -180,7 +184,7 @@
     },
     "analyst": {
       "models": [
-        "gemini-2.5-pro",
+        "gemini-3-pro-preview",
         "claude-opus-4-6"
       ],
       "reasoningEffort": null,
