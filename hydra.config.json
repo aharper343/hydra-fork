@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "mode": "economy",
+  "mode": "performance",
   "models": {
     "gemini": {
       "default": "gemini-3-pro-preview",
