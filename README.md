@@ -319,9 +319,11 @@ These commands are available inside the interactive operator console (`npm run g
 | `:agents info <name>` | Show agent details & config |
 | `:doctor` | Diagnostic stats & recent log entries |
 | `:doctor log` | Show last 25 diagnostic entries |
+| `:doctor fix` | Auto-detect and fix issues via action pipeline |
 | `:doctor diagnose <text>` | Investigate a failure via GPT-5.3 |
 | `:kb` | Knowledge base stats & recent entries |
 | `:kb <query>` | Search knowledge base entries |
+| `:cleanup` | Scan & clean stale branches, tasks, artifacts |
 | `:sync` | Sync HYDRA.md to agent instruction files |
 | `:confirm` | Show/toggle dispatch confirmations |
 | `:shutdown` | Stop the daemon |
