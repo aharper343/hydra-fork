@@ -265,7 +265,7 @@ These commands are available inside the interactive operator console (`npm run g
 | `:roster` | Edit role->agent->model assignments interactively |
 | `:usage` | Token usage & contingencies |
 | `:stats` | Agent metrics & performance |
-| `:resume` | Ack handoffs, reset stale tasks, launch agents |
+| `:resume` | Scan all resumable state (daemon, evolve, branches, suggestions) |
 | `:pause [reason]` | Pause the active session |
 | `:unpause` | Resume a paused session |
 | `:fork` | Fork current session |
@@ -308,6 +308,13 @@ These commands are available inside the interactive operator console (`npm run g
 | `:forge` | Interactive agent creation wizard |
 | `:forge list` | List forged agents |
 | `:forge delete <name>` | Remove a forged agent |
+| `:agents` | List all registered agents |
+| `:agents info <name>` | Show agent details & config |
+| `:doctor` | Diagnostic stats & recent log entries |
+| `:doctor log` | Show last 25 diagnostic entries |
+| `:doctor diagnose <text>` | Investigate a failure via GPT-5.3 |
+| `:kb` | Knowledge base stats & recent entries |
+| `:kb <query>` | Search knowledge base entries |
 | `:sync` | Sync HYDRA.md to agent instruction files |
 | `:confirm` | Show/toggle dispatch confirmations |
 | `:shutdown` | Stop the daemon |

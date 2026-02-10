@@ -353,6 +353,15 @@
     "perTaskTimeoutMin": 15,
     "handoffModel": "o4-mini"
   },
+  "providers": {
+    "openai": {
+      "adminKey": null
+    },
+    "anthropic": {
+      "adminKey": null
+    },
+    "google": {}
+  },
   "doctor": {
     "enabled": true,
     "autoCreateTasks": true,
