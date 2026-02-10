@@ -240,6 +240,71 @@ hydra/
 | `npm run nightly:review` | Review nightly round results |
 | `npm test` | Run unit + integration tests |
 
+## Operator Commands
+
+These commands are available inside the interactive operator console (`npm run go`).
+
+| Command | Description |
+|---------|-------------|
+| `:help` | Show help |
+| `:status` | Dashboard with agents & tasks |
+| `:sitrep` | AI-narrated situation report |
+| `:mode auto` | Mini-round triage then delegate/escalate |
+| `:mode smart` | Auto-select model tier per prompt complexity |
+| `:mode handoff` | Direct handoffs (fast, no triage) |
+| `:mode council` | Full council deliberation |
+| `:mode dispatch` | Headless pipeline (Claude->Gemini->Codex) |
+| `:model` | Show mode & active models |
+| `:model claude=sonnet` | Override agent model |
+| `:model reset` | Clear all overrides |
+| `:model:select` | Interactive model picker |
+| `:roles` | Show role->agent->model mapping & recommendations |
+| `:usage` | Token usage & contingencies |
+| `:stats` | Agent metrics & performance |
+| `:resume` | Ack handoffs, reset stale tasks, launch agents |
+| `:pause [reason]` | Pause the active session |
+| `:unpause` | Resume a paused session |
+| `:fork` | Fork current session |
+| `:spawn <focus>` | Spawn child session |
+| `:tasks` | List active daemon tasks |
+| `:tasks scan` | Scan codebase for TODO/FIXME/issues |
+| `:tasks run` | Launch autonomous tasks runner |
+| `:tasks review` | Interactive branch review & merge |
+| `:tasks status` | Show latest tasks run report |
+| `:tasks clean` | Delete all tasks/* branches |
+| `:handoffs` | List pending & recent handoffs |
+| `:cancel <id>` | Cancel a task |
+| `:clear` | Cancel all tasks & ack all handoffs |
+| `:archive` | Archive completed work & trim events |
+| `:events` | Show recent event log |
+| `:workers` | Show worker status |
+| `:workers start [agent]` | Start worker(s) |
+| `:workers stop [agent]` | Stop worker(s) |
+| `:workers restart` | Restart all workers |
+| `:workers mode <mode>` | Change permission mode |
+| `:watch <agent>` | Open visible terminal for agent |
+| `:chat` | Toggle concierge on/off |
+| `:chat model` | Show active model & fallback chain |
+| `:chat model <name>` | Switch model (e.g. sonnet, flash) |
+| `:chat export` | Export conversation to file |
+| `:evolve` | Launch evolve session |
+| `:evolve status` | Show latest evolve report |
+| `:evolve resume` | Resume interrupted session |
+| `:evolve knowledge` | Browse knowledge base |
+| `:github` | GitHub status |
+| `:github prs` | List open pull requests |
+| `:pr create [branch]` | Push branch & create PR |
+| `:pr list` | List open pull requests |
+| `:pr view <number>` | Show PR details |
+| `:forge` | Interactive agent creation wizard |
+| `:forge list` | List forged agents |
+| `:forge delete <name>` | Remove a forged agent |
+| `:sync` | Sync HYDRA.md to agent instruction files |
+| `:confirm` | Show/toggle dispatch confirmations |
+| `:shutdown` | Stop the daemon |
+| `:quit` | Exit operator console |
+| `!<prompt>` | Force dispatch (bypass concierge) |
+
 ## GitHub Integration
 
 Hydra can create pull requests, list PRs, and integrate with the review flow via the `gh` CLI.
