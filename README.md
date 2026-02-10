@@ -259,6 +259,7 @@ These commands are available inside the interactive operator console (`npm run g
 | `:model reset` | Clear all overrides |
 | `:model:select` | Interactive model picker |
 | `:roles` | Show role->agent->model mapping & recommendations |
+| `:roster` | Edit role->agent->model assignments interactively |
 | `:usage` | Token usage & contingencies |
 | `:stats` | Agent metrics & performance |
 | `:resume` | Ack handoffs, reset stale tasks, launch agents |
