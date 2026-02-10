@@ -8,6 +8,7 @@ import {
   getAgentMetrics,
   getMetricsSummary,
   getSessionUsage,
+  getRecentTokens,
   estimateFlowDuration,
   resetMetrics,
   metricsEmitter,
@@ -305,4 +306,119 @@ test('metrics: handles missing stdout/stderr gracefully', () => {
   const agent = getAgentMetrics('claude');
   assert.equal(agent.callsSuccess, 1);
   assert.equal(agent.estimatedTokensToday, 0);
+});
+
+// ── result.output compatibility (Bug 2 fix) ─────────────────────────────────
+
+test('metrics: recordCallComplete accepts result.output as alias for stdout', () => {
+  resetMetrics();
+  const h = recordCallStart('claude', 'claude-opus-4-6');
+  const claudeOutput = JSON.stringify({
+    type: 'result',
+    result: 'Hello',
+    usage: { input_tokens: 800, output_tokens: 200 },
+    cost_usd: 0.03,
+  });
+  recordCallComplete(h, { output: claudeOutput, stderr: '' });
+
+  const agent = getAgentMetrics('claude');
+  assert.equal(agent.callsSuccess, 1);
+  assert.equal(agent.sessionTokens.inputTokens, 800);
+  assert.equal(agent.sessionTokens.outputTokens, 200);
+  assert.equal(agent.sessionTokens.totalTokens, 1000);
+  assert.equal(agent.sessionTokens.costUsd, 0.03);
+});
+
+test('metrics: result.stdout takes precedence over result.output', () => {
+  resetMetrics();
+  const h = recordCallStart('claude', 'claude-opus-4-6');
+  const claudeOutput = JSON.stringify({
+    type: 'result',
+    result: 'Hello',
+    usage: { input_tokens: 100, output_tokens: 50 },
+    cost_usd: 0.01,
+  });
+  // When both stdout and output are present, stdout wins
+  recordCallComplete(h, { stdout: claudeOutput, output: 'ignored', stderr: '' });
+
+  const agent = getAgentMetrics('claude');
+  assert.equal(agent.sessionTokens.inputTokens, 100);
+  assert.equal(agent.sessionTokens.totalTokens, 150);
+});
+
+// ── history stores full realTokens object ────────────────────────────────────
+
+test('metrics: history entry contains full realTokens breakdown', () => {
+  resetMetrics();
+  const h = recordCallStart('claude', 'claude-opus-4-6');
+  const claudeOutput = JSON.stringify({
+    type: 'result',
+    result: 'Hello',
+    usage: {
+      input_tokens: 500,
+      output_tokens: 300,
+      cache_creation_input_tokens: 50,
+      cache_read_input_tokens: 25,
+    },
+    cost_usd: 0.02,
+  });
+  recordCallComplete(h, { stdout: claudeOutput, stderr: '' });
+
+  const agent = getAgentMetrics('claude');
+  const entry = agent.history[0];
+  assert.ok(typeof entry.realTokens === 'object', 'realTokens should be an object');
+  assert.equal(entry.realTokens.inputTokens, 500);
+  assert.equal(entry.realTokens.outputTokens, 300);
+  assert.equal(entry.realTokens.cacheCreationTokens, 50);
+  assert.equal(entry.realTokens.cacheReadTokens, 25);
+  assert.equal(entry.realTokens.totalTokens, 800);
+});
+
+// ── getRecentTokens ──────────────────────────────────────────────────────────
+
+test('metrics: getRecentTokens returns zeros when no data', () => {
+  resetMetrics();
+  const result = getRecentTokens('claude', 5 * 60 * 60 * 1000);
+  assert.equal(result.real, 0);
+  assert.equal(result.estimated, 0);
+  assert.equal(result.total, 0);
+  assert.equal(result.entries, 0);
+});
+
+test('metrics: getRecentTokens sums tokens from recent calls', () => {
+  resetMetrics();
+  // Record a Claude call with real tokens
+  const h1 = recordCallStart('claude', 'claude-opus-4-6');
+  const out1 = JSON.stringify({
+    type: 'result', result: 'ok',
+    usage: { input_tokens: 1000, output_tokens: 500 },
+    cost_usd: 0.04,
+  });
+  recordCallComplete(h1, { stdout: out1, stderr: '' });
+
+  // Record a non-Claude call (estimated only)
+  const h2 = recordCallStart('gemini', 'pro');
+  recordCallComplete(h2, { stdout: 'x'.repeat(400), stderr: '' });
+
+  const claudeRecent = getRecentTokens('claude', 60_000);
+  assert.equal(claudeRecent.real, 1500);
+  assert.equal(claudeRecent.estimated, 0);
+  assert.equal(claudeRecent.entries, 1);
+
+  const geminiRecent = getRecentTokens('gemini', 60_000);
+  assert.equal(geminiRecent.real, 0);
+  assert.ok(geminiRecent.estimated > 0);
+  assert.equal(geminiRecent.entries, 1);
+});
+
+test('metrics: getRecentTokens with null agentName sums all agents', () => {
+  resetMetrics();
+  const h1 = recordCallStart('claude', 'opus');
+  recordCallComplete(h1, { stdout: 'hello world', stderr: '' });
+  const h2 = recordCallStart('gemini', 'pro');
+  recordCallComplete(h2, { stdout: 'hello world', stderr: '' });
+
+  const all = getRecentTokens(null, 60_000);
+  assert.equal(all.entries, 2);
+  assert.ok(all.estimated > 0);
 });

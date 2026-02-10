@@ -3,7 +3,7 @@
     Hydra Nightly Runner — PowerShell launcher for autonomous overnight work.
 
 .DESCRIPTION
-    Launches the Hydra nightly runner from the SideQuest project directory.
+    Launches the Hydra nightly runner from the target project directory.
     Designed for Windows Task Scheduler or manual invocation.
 
     The runner:
@@ -17,17 +17,17 @@
     .\bin\hydra-nightly.ps1
 
     # With overrides
-    .\bin\hydra-nightly.ps1 -MaxTasks 2 -Project "E:\Dev\SideQuest"
+    .\bin\hydra-nightly.ps1 -MaxTasks 2 -Project "C:\Dev\MyProject"
 
     # Task Scheduler (create via taskschd.msc):
     #   Program: pwsh.exe
     #   Arguments: -NoProfile -ExecutionPolicy Bypass -File "E:\Dev\Hydra\bin\hydra-nightly.ps1"
-    #   Start in: E:\Dev\SideQuest
+    #   Start in: C:\Dev\MyProject
     #   Trigger: Daily at 01:00
 #>
 
 param(
-    [string]$Project = "E:\Dev\SideQuest",
+    [string]$Project = (Get-Location).Path,
     [int]$MaxTasks = 0,
     [float]$MaxHours = 0,
     [int]$HardLimit = 0,

@@ -17,17 +17,17 @@
     .\bin\hydra-evolve.ps1
 
     # With overrides
-    .\bin\hydra-evolve.ps1 -MaxRounds 1 -Project "E:\Dev\SideQuest"
+    .\bin\hydra-evolve.ps1 -MaxRounds 1 -Project "C:\Dev\MyProject"
 
     # Task Scheduler (create via taskschd.msc):
     #   Program: pwsh.exe
     #   Arguments: -NoProfile -ExecutionPolicy Bypass -File "E:\Dev\Hydra\bin\hydra-evolve.ps1"
-    #   Start in: E:\Dev\SideQuest
+    #   Start in: C:\Dev\MyProject
     #   Trigger: Weekly, Sunday at 02:00
 #>
 
 param(
-    [string]$Project = "E:\Dev\SideQuest",
+    [string]$Project = (Get-Location).Path,
     [int]$MaxRounds = 0,
     [float]$MaxHours = 0,
     [int]$HardLimit = 0,

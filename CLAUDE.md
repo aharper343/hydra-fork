@@ -61,9 +61,11 @@ Operator Console (REPL)
 - **`hydra-concierge-providers.mjs`** — Provider abstraction layer. `detectAvailableProviders()`, `buildFallbackChain()`, `streamWithFallback()`. Lazy-loads provider modules via `await import()`.
 - **`hydra-anthropic.mjs`** — Streaming client for Anthropic Messages API. Mirrors `hydra-openai.mjs` pattern.
 - **`hydra-google.mjs`** — Streaming client for Google Gemini Generative Language API.
-- **`hydra-worker.mjs`** — `AgentWorker` class (EventEmitter). Headless background agent execution with claim→execute→report loop. Records per-call metrics. Codex workers use `--json` for JSONL output with real token usage extraction.
+- **`hydra-metrics.mjs`** — In-memory metrics store with file persistence. Handle-based API: `recordCallStart(agent, model)` returns handle, `recordCallComplete(handle, result)` accepts `result.stdout` or `result.output`. Extracts real tokens from Claude JSON and Codex JSONL output. Exports `getRecentTokens(agentName, windowMs)` for sliding window calculations, `getSessionUsage()`, `getMetricsSummary()`, `metricsEmitter` (EventEmitter).
+- **`hydra-usage.mjs`** — Token usage monitor. Reads Claude Code's `stats-cache.json` + hydra-metrics fallback. `checkUsage()` returns daily + sliding window budget assessment. `checkWindowBudget()` enforces `windowHours`/`windowTokenBudget` from config. Distinguishes `hydra-metrics-real` vs `hydra-metrics-estimate` sources. Standalone CLI: `node lib/hydra-usage.mjs`.
+- **`hydra-worker.mjs`** — `AgentWorker` class (EventEmitter). Headless background agent execution with claim→execute→report loop. Records per-call metrics. Codex workers use `--json` for JSONL output with real token usage extraction. Events include `title` for contextual display.
 - **`hydra-ui.mjs`** — All terminal rendering. Uses `picocolors` (`pc`) exclusively — never chalk. Exports `AGENT_COLORS`, `AGENT_ICONS`, `stripAnsi`, formatters.
-- **`hydra-statusbar.mjs`** — 5-line persistent ANSI footer. SSE event streaming preferred, polling fallback.
+- **`hydra-statusbar.mjs`** — 5-line persistent ANSI footer. SSE event streaming preferred, polling fallback. Ticker events show task/handoff context (title/summary) alongside IDs.
 - **`hydra-prompt-choice.mjs`** — Interactive numbered-choice prompt with rounded box UI. Dynamic width (60-120 cols, 90% terminal), word-wrapped context values, cooperative readline lock, auto-accept mode, freeform input support, animated box draw-in.
 - **`hydra-openai.mjs`** — Shared `streamCompletion()` for OpenAI API. Callers must always pass `cfg.model`.
 - **`hydra-sub-agents.mjs`** — Built-in virtual sub-agent definitions (security-reviewer, test-writer, doc-generator, researcher, evolve-researcher). Registered at startup via `registerBuiltInSubAgents()`.
@@ -74,7 +76,7 @@ Operator Console (REPL)
   - `constants.mjs` — `BASE_PROTECTED_FILES`, `BASE_PROTECTED_PATTERNS`, `BLOCKED_COMMANDS`
   - `guardrails.mjs` — `verifyBranch()`, `isCleanWorkingTree()`, `buildSafetyPrompt()`, `scanBranchViolations()`
   - `budget-tracker.mjs` — Base `BudgetTracker` class with configurable thresholds
-  - `agent-executor.mjs` — Unified `executeAgent()` with stdin piping, stderr capture, progress ticking. Auto-resolves codex model via `getActiveModel()`.
+  - `agent-executor.mjs` — Unified `executeAgent()` with stdin piping, stderr capture, progress ticking. Auto-resolves codex model via `getActiveModel()`. Returns `{ output, stdout, stderr, ... }` (`stdout` alias for metrics compatibility).
   - `review-common.mjs` — Interactive review helpers: `handleBranchAction()` (with `[p]r` option when `gh` available), `loadLatestReport()`, `cleanBranches()`
 - **`hydra-evolve-suggestions.mjs`** — Persistent suggestions backlog for evolve pipeline. Stores improvement ideas from failed/deferred rounds, user input, and review sessions. Exports `loadSuggestions()`, `saveSuggestions()`, `addSuggestion()`, `updateSuggestion()`, `removeSuggestion()`, `getPendingSuggestions()`, `getSuggestionById()`, `searchSuggestions()`, `createSuggestionFromRound()`, `promptSuggestionPicker()`, `getSuggestionStats()`, `formatSuggestionsForPrompt()`. Storage: `docs/coordination/evolve/SUGGESTIONS.json`.
 - **`hydra-evolve-suggestions-cli.mjs`** — Standalone CLI for managing suggestions backlog. Subcommands: `list`, `add`, `remove`, `reset`, `import`, `stats`.
@@ -99,7 +101,7 @@ Operator Console (REPL)
 ## Code Conventions
 
 - **ESM only** (`"type": "module"` in package.json). All files use `import`/`export`.
-- **Single dependency**: `picocolors` for terminal colors. Everything else is pure Node.js.
+- **Two dependencies**: `picocolors` for terminal colors, `cross-spawn` for cross-platform process spawning. Everything else is pure Node.js.
 - **Agent names** are always lowercase strings: `claude`, `gemini`, `codex`.
 - **HTTP helpers**: Use `request()` from `hydra-utils.mjs` for daemon calls. Status bar uses `fetch()` directly (lightweight polling).
 - **Config access**: `loadHydraConfig()` returns cached config. `getRoleConfig(roleName)` for role-specific model/agent lookups.

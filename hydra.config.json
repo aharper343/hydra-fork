@@ -1,33 +1,33 @@
 {
   "version": 2,
-  "mode": "custom",
+  "mode": "economy",
   "models": {
     "gemini": {
-      "default": "gemini-2.5-pro",
-      "fast": "gemini-2.5-flash",
-      "cheap": "gemini-2.5-flash",
+      "default": "gemini-3-pro-preview",
+      "fast": "gemini-3-flash-preview",
+      "cheap": "gemini-3-flash-preview",
       "active": "default",
-      "reasoningEffort": "high"
+      "reasoningEffort": "low"
     },
     "codex": {
       "default": "gpt-5.3",
       "fast": "o4-mini",
       "cheap": "o4-mini",
       "active": "default",
-      "reasoningEffort": "xhigh"
+      "reasoningEffort": "low"
     },
     "claude": {
       "default": "claude-opus-4-6",
       "fast": "claude-sonnet-4-5-20250929",
       "cheap": "claude-haiku-4-5-20251001",
       "active": "default",
-      "reasoningEffort": "high"
+      "reasoningEffort": "low"
     }
   },
   "aliases": {
     "gemini": {
-      "pro": "gemini-2.5-pro",
-      "flash": "gemini-2.5-flash",
+      "pro": "gemini-3-pro-preview",
+      "flash": "gemini-3-flash-preview",
       "2.5-pro": "gemini-2.5-pro",
       "2.5-flash": "gemini-2.5-flash",
       "3-pro": "gemini-3-pro-preview",
@@ -61,9 +61,9 @@
       "claude": "default"
     },
     "economy": {
-      "gemini": "fast",
+      "gemini": "cheap",
       "codex": "cheap",
-      "claude": "fast"
+      "claude": "cheap"
     },
     "custom": {
       "gemini": "default",
@@ -97,7 +97,7 @@
   "concierge": {
     "enabled": true,
     "model": "gpt-5",
-    "reasoningEffort": "xhigh",
+    "reasoningEffort": "low",
     "maxHistoryMessages": 40,
     "autoActivate": true,
     "showProviderInPrompt": true,
@@ -113,7 +113,7 @@
       },
       {
         "provider": "google",
-        "model": "gemini-2.5-flash"
+        "model": "gemini-3-flash-preview"
       }
     ]
   },

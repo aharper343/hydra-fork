@@ -17,6 +17,7 @@ import {
   parseTestOutput,
   nowIso,
   runId,
+  runProcess,
 } from '../lib/hydra-utils.mjs';
 
 // ── parseArgs ────────────────────────────────────────────────────────────────
@@ -126,8 +127,8 @@ test('parseList splits comma-separated values', () => {
   assert.deepEqual(parseList('gemini,codex,claude'), ['gemini', 'codex', 'claude']);
 });
 
-test('parseList splits space-separated values', () => {
-  assert.deepEqual(parseList('claude gemini'), ['claude', 'gemini']);
+test('parseList preserves spaces within values', () => {
+  assert.deepEqual(parseList('claude gemini'), ['claude gemini']);
 });
 
 test('parseList handles mixed separators and trims', () => {
@@ -142,6 +143,18 @@ test('parseList returns empty for null/empty', () => {
 
 test('parseList passes through arrays', () => {
   assert.deepEqual(parseList(['a', 'b']), ['a', 'b']);
+});
+
+test('parseList trims whitespace around values', () => {
+  assert.deepEqual(parseList('  a , b , c  '), ['a', 'b', 'c']);
+});
+
+test('parseList handles single value', () => {
+  assert.deepEqual(parseList('single'), ['single']);
+});
+
+test('parseList ignores trailing comma', () => {
+  assert.deepEqual(parseList('a,b,'), ['a', 'b']);
 });
 
 // ── short ────────────────────────────────────────────────────────────────────
@@ -476,4 +489,50 @@ not ok 2 - test b fails
   assert.equal(result.failed, 1);
   assert.equal(result.failures.length, 1);
   assert.equal(result.failures[0].name, 'test b fails');
+});
+
+// ── runProcess ──────────────────────────────────────────────────────────────
+
+test('runProcess returns ok:true for successful command', () => {
+  const result = runProcess('node', ['-e', "console.log('hello')"]);
+  assert.equal(result.ok, true);
+  assert.equal(result.exitCode, 0);
+  assert.ok(result.stdout.includes('hello'));
+  assert.equal(result.error, '');
+  assert.equal(result.timedOut, false);
+});
+
+test('runProcess returns ok:false for non-zero exit', () => {
+  const result = runProcess('node', ['-e', 'process.exit(42)']);
+  assert.equal(result.ok, false);
+  assert.equal(result.exitCode, 42);
+});
+
+test('runProcess captures stderr', () => {
+  const result = runProcess('node', ['-e', "console.error('oops')"]);
+  assert.ok(result.stderr.includes('oops'));
+});
+
+test('runProcess handles timeout', () => {
+  const result = runProcess('node', ['-e', 'setTimeout(()=>{},10000)'], 500);
+  assert.equal(result.ok, false);
+  assert.equal(result.timedOut, true);
+});
+
+test('runProcess returns ok:false for unknown command', () => {
+  const result = runProcess('nonexistent_cmd_xyz_12345', []);
+  assert.equal(result.ok, false);
+  assert.ok(result.error.length > 0);
+});
+
+test('runProcess respects cwd option', () => {
+  const result = runProcess('node', ['-e', "console.log(process.cwd())"], undefined, { cwd: process.cwd() });
+  assert.equal(result.ok, true);
+  assert.ok(result.stdout.trim().length > 0);
+});
+
+test('runProcess pipes stdin input', () => {
+  const result = runProcess('node', ['-e', "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>console.log(d))"], undefined, { input: 'piped-data' });
+  assert.equal(result.ok, true);
+  assert.ok(result.stdout.includes('piped-data'));
 });
