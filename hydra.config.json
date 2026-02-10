@@ -353,6 +353,14 @@
     "perTaskTimeoutMin": 15,
     "handoffModel": "o4-mini"
   },
+  "doctor": {
+    "enabled": true,
+    "autoCreateTasks": true,
+    "autoCreateSuggestions": true,
+    "addToKnowledgeBase": true,
+    "recurringThreshold": 3,
+    "recurringWindowDays": 7
+  },
   "modelRecovery": {
     "enabled": true,
     "autoPersist": true,

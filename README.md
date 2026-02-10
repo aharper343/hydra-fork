@@ -68,6 +68,7 @@ pwsh -File E:/Dev/Hydra/bin/hydra.ps1
 - **Metrics dashboard**: Per-agent call counts, response times, real + estimated tokens, success rates
 - **Model recovery**: Automatic detection and fallback when a configured model is unavailable. Interactive mode offers choice; headless mode auto-selects fallback. Integrated into evolve, workers, and MCP.
 - **Rate limit resilience**: Detects 429/RESOURCE_EXHAUSTED/QUOTA_EXHAUSTED errors across all providers. Exponential backoff with jitter and server Retry-After support. Evolve pipeline retries rate-limited agents without wasting API calls on investigator diagnosis. Configurable via `rateLimits` config section.
+- **Failure doctor**: Higher-level diagnostic layer that fires on non-trivial pipeline failures. Calls the investigator for diagnosis, triages into follow-up actions (daemon tasks, evolve suggestions, KB entries), and detects recurring error patterns across sessions. Configurable via `doctor` config section.
 - **Contingency planning**: When approaching rate limits, offers model switching, agent handoff, or progress saving
 - **Project-aware verification**: Auto-detects verification command by stack (or uses explicit config)
 - **5-line status bar**: Persistent terminal footer with agent activity, token gauge, dispatch context, and rolling event ticker
@@ -85,6 +86,7 @@ pwsh -File E:/Dev/Hydra/bin/hydra.ps1
 - **Autonomous self-improvement**: 7-phase evolve pipeline with budget tracking, investigator self-healing, and knowledge accumulation
 - **Evolve suggestions backlog**: Persistent improvement ideas from rejected/deferred rounds, user input, and review sessions — interactive picker at session start, CLI management, Jaccard dedup
 - **Nightly automation**: Config-driven 5-phase pipeline (scan, AI discovery, prioritize, execute, report) with multi-source task scanning, intelligent agent routing, and smart merge review
+- **Commit attribution**: Automated pipeline commits include `Originated-By:` and `Executed-By:` git trailers for provenance tracking. Safety prompts instruct agents to include trailers; `stageAndCommit()` also appends them programmatically.
 - **GitHub integration**: PR creation from operator (`:pr create`), review flow PR option, repo detection, open PR listing — requires `gh` CLI
 
 ### Platform & Infrastructure
@@ -155,6 +157,7 @@ hydra/
     hydra-context.mjs        # Tiered context builders
     hydra-council.mjs        # Multi-round deliberation (with agent filtering + specs)
     hydra-dispatch.mjs       # Single-shot pipeline
+    hydra-doctor.mjs         # Failure diagnostic and triage layer (doctor agent)
     hydra-env.mjs            # Minimal .env loader (auto-loads on import)
     hydra-evolve.mjs         # Autonomous self-improvement pipeline (7-phase rounds)
     hydra-evolve-guardrails.mjs # Evolve safety guardrails
@@ -340,6 +343,34 @@ gh auth login
 ```
 
 When `gh` is installed, the evolve and nightly review flows automatically show a `[p]r` option alongside merge/skip/diff/delete.
+
+## Failure Doctor
+
+The doctor layer fires when evolve, nightly, or tasks encounters a non-trivial failure. It calls the investigator for diagnosis, triages the result into actionable follow-ups, and tracks recurring patterns.
+
+**Config** (`hydra.config.json`):
+```json
+{
+  "doctor": {
+    "enabled": true,
+    "autoCreateTasks": true,
+    "autoCreateSuggestions": true,
+    "addToKnowledgeBase": true,
+    "recurringThreshold": 3,
+    "recurringWindowDays": 7
+  }
+}
+```
+
+**How it works:**
+- On failure, builds an error signature (agent + phase + error snippet)
+- Checks `DOCTOR_LOG.ndjson` for recurring patterns (same signature 3+ times in 7 days)
+- Rate limits and simple timeouts are skipped (already handled by retry logic)
+- Calls the investigator for diagnosis when available
+- Triages: fundamental → suggestion ticket, fixable → daemon task (fallback: suggestion), transient → log only
+- Recurring transient failures get escalated to tickets
+- Non-transient findings are added to the evolve knowledge base
+- All diagnoses are logged to `docs/coordination/doctor/DOCTOR_LOG.ndjson`
 
 ## Evolve Suggestions Backlog
 

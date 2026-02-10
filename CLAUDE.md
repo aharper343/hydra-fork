@@ -73,7 +73,7 @@ Operator Console (REPL)
 - **`hydra-prompt-choice.mjs`** — Interactive numbered-choice prompt with rounded box UI. Dynamic width (60-120 cols, 90% terminal), word-wrapped context values, cooperative readline lock, auto-accept mode, freeform input support, animated box draw-in.
 - **`hydra-roster.mjs`** — Inline REPL editor for role→agent→model assignments. Walks each role in `config.roles`, offers keep/change/skip, then agent→model→reasoning pickers. Uses `promptChoice()` and `getEffortOptionsForModel()`. Exports `runRosterEditor(rl)`. Accessed via `:roster` command.
 - **`hydra-openai.mjs`** — Shared `streamCompletion()` for OpenAI API. Callers must always pass `cfg.model`.
-- **`hydra-sub-agents.mjs`** — Built-in virtual sub-agent definitions (security-reviewer, test-writer, doc-generator, researcher, evolve-researcher). Registered at startup via `registerBuiltInSubAgents()`.
+- **`hydra-sub-agents.mjs`** — Built-in virtual sub-agent definitions (security-reviewer, test-writer, doc-generator, researcher, evolve-researcher, failure-doctor). Registered at startup via `registerBuiltInSubAgents()`.
 - **`hydra-agent-forge.mjs`** — Multi-model agent creation pipeline. 5-phase: ANALYZE (Gemini) → DESIGN (Claude) → CRITIQUE (Gemini) → REFINE (Claude) → TEST (optional). Exports `runForgeWizard()`, `forgeAgent()`, `runForgePipeline()`, `analyzeCodebase()`, `validateAgentSpec()`, `testForgedAgent()`, `persistForgedAgent()`, `removeForgedAgent()`, `loadForgeRegistry()`/`saveForgeRegistry()`, `listForgedAgents()`, `generateSamplePrompt()`. Metadata stored in `docs/coordination/forge/FORGE_REGISTRY.json`. Config: `forge.enabled`, `.autoTest`, `.phaseTimeoutMs`, `.storageDir`.
 - **`hydra-model-recovery.mjs`** — Post-hoc model error detection, rate limit handling, and fallback. Detects model unavailability errors and offers fallback selection. Also detects rate limit / quota errors (429, RESOURCE_EXHAUSTED, QUOTA_EXHAUSTED) with exponential backoff support. Exports `detectModelError(agent, result)`, `detectRateLimitError(agent, result)`, `calculateBackoff(attempt, opts)`, `getFallbackCandidates(agent, failedModel)`, `recoverFromModelError(agent, failedModel, opts)`, `isModelRecoveryEnabled()`. Interactive mode uses `promptChoice()` for user selection; headless mode auto-selects first candidate. Config: `modelRecovery.enabled`, `.autoPersist`, `.headlessFallback`; `rateLimits.maxRetries`, `.baseDelayMs`, `.maxDelayMs`.
 - **`hydra-env.mjs`** — Minimal `.env` loader. Auto-loads on import. Real env vars take priority.
@@ -81,7 +81,7 @@ Operator Console (REPL)
 - **`hydra-shared/`** — Shared infrastructure for nightly and evolve pipelines:
   - `git-ops.mjs` — Git helpers (parameterized baseBranch): `git()`, `getCurrentBranch()`, `checkoutBranch()`, `createBranch()`, `getBranchStats()`, `smartMerge()`, plus remote sync helpers: `getRemoteUrl()`, `parseRemoteUrl()`, `fetchOrigin()`, `pushBranch()`, `hasRemote()`, `getTrackingBranch()`, `isAheadOfRemote()`.
   - `constants.mjs` — `BASE_PROTECTED_FILES`, `BASE_PROTECTED_PATTERNS`, `BLOCKED_COMMANDS`
-  - `guardrails.mjs` — `verifyBranch()`, `isCleanWorkingTree()`, `buildSafetyPrompt()`, `scanBranchViolations()`
+  - `guardrails.mjs` — `verifyBranch()`, `isCleanWorkingTree()`, `buildSafetyPrompt()` (supports `attribution` param for commit trailers), `scanBranchViolations()`
   - `budget-tracker.mjs` — Base `BudgetTracker` class with configurable thresholds
   - `agent-executor.mjs` — Unified `executeAgent()` with stdin piping, stderr capture, progress ticking. Auto-resolves codex model via `getActiveModel()`. Returns `{ output, stdout, stderr, ... }` (`stdout` alias for metrics compatibility). Accepts `opts.reasoningEffort` for role-specific overrides. Model-aware CLI flags: `--reasoning-effort` for o-series (codex), `--thinking-budget` for Claude opus/sonnet. Also exports `executeAgentWithRecovery()` — wraps `executeAgent()` with automatic model-error detection and fallback retry via `hydra-model-recovery.mjs`.
   - `review-common.mjs` — Interactive review helpers: `handleBranchAction()` (with `[p]r` option when `gh` available, `useSmartMerge` option for auto-rebase), `loadLatestReport()`, `cleanBranches()`
@@ -98,6 +98,17 @@ Operator Console (REPL)
 - **`hydra-mcp-server.mjs`** — MCP server exposing Hydra tools via JSON-RPC over stdio. Two modes: **standalone** (`hydra_ask` works without daemon — directly invokes agent CLIs via `executeAgent()`) and **daemon** (task queue, handoffs, council tools when daemon is running). Registered as `hydra` MCP server for Claude Code.
 - **`hydra-investigator.mjs`** — Re-exports from `hydra-evolve-investigator.mjs`. Self-healing failure diagnosis (shared).
 - **`hydra-knowledge.mjs`** — Re-exports from `hydra-evolve-knowledge.mjs`. Persistent knowledge base (shared).
+- **`hydra-doctor.mjs`** — Higher-level failure diagnostic and triage layer. Fires on non-trivial failures in evolve/nightly/tasks. Calls existing investigator for diagnosis, triages into follow-ups (daemon task, suggestion backlog entry, or KB learning), and tracks recurring error patterns via append-only NDJSON log. Exports `initDoctor()`, `isDoctorEnabled()`, `diagnose(failure)`, `getDoctorStats()`, `resetDoctor()`. Storage: `docs/coordination/doctor/DOCTOR_LOG.ndjson`. Config: `doctor.enabled`, `.autoCreateTasks`, `.autoCreateSuggestions`, `.addToKnowledgeBase`, `.recurringThreshold`, `.recurringWindowDays`.
+
+### Commit Attribution
+
+Automated pipelines (evolve, nightly, tasks) add git trailers to commits for provenance:
+```
+Originated-By: hydra-evolve
+Executed-By: codex
+```
+- `buildSafetyPrompt()` accepts `attribution: { pipeline, agent }` to instruct agents to include trailers
+- `stageAndCommit()` accepts `opts.originatedBy` and `opts.executedBy` to append trailers programmatically
 
 ### Dispatch Modes
 
@@ -109,7 +120,7 @@ Operator Console (REPL)
 
 ### Task Routing
 
-10 task types (planning, architecture, review, refactor, implementation, analysis, testing, security, research, documentation) × 3 physical agents + 5 virtual sub-agents with affinity scores. `classifyTask()` in hydra-agents.mjs selects the optimal agent. Virtual sub-agents (e.g. `security-reviewer`) resolve to their base physical agent for CLI dispatch via `resolvePhysicalAgent()`.
+10 task types (planning, architecture, review, refactor, implementation, analysis, testing, security, research, documentation) × 3 physical agents + 6 virtual sub-agents with affinity scores. `classifyTask()` in hydra-agents.mjs selects the optimal agent. Virtual sub-agents (e.g. `security-reviewer`) resolve to their base physical agent for CLI dispatch via `resolvePhysicalAgent()`.
 
 ## Code Conventions
 
