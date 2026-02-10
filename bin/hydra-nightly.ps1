@@ -7,10 +7,11 @@
     Designed for Windows Task Scheduler or manual invocation.
 
     The runner:
-    - Processes queued tasks on isolated nightly/* branches
-    - Manages Claude → Codex 5.3 budget escalation
-    - Generates a morning report for review
-    - Never touches dev/staging/main
+    - Scans multiple sources (TODO comments, TODO.md, GitHub issues, config, AI discovery)
+    - Routes tasks to the best agent (Claude, Gemini, Codex) via intelligent classification
+    - Manages budget with configurable handoff thresholds
+    - Generates morning reports for review
+    - Works on isolated nightly/* branches
 
 .EXAMPLE
     # Manual run
@@ -18,6 +19,12 @@
 
     # With overrides
     .\bin\hydra-nightly.ps1 -MaxTasks 2 -Project "C:\Dev\MyProject"
+
+    # Skip AI discovery
+    .\bin\hydra-nightly.ps1 -NoDiscovery
+
+    # Dry run (scan + prioritize only)
+    .\bin\hydra-nightly.ps1 -DryRun
 
     # Task Scheduler (create via taskschd.msc):
     #   Program: pwsh.exe
@@ -31,7 +38,9 @@ param(
     [int]$MaxTasks = 0,
     [float]$MaxHours = 0,
     [int]$HardLimit = 0,
-    [switch]$DryRun
+    [switch]$NoDiscovery,
+    [switch]$DryRun,
+    [string]$Sources = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -54,6 +63,9 @@ $NodeArgs = @($NightlyScript, "project=$Project")
 if ($MaxTasks -gt 0)  { $NodeArgs += "max-tasks=$MaxTasks" }
 if ($MaxHours -gt 0)  { $NodeArgs += "max-hours=$MaxHours" }
 if ($HardLimit -gt 0) { $NodeArgs += "hard-limit=$HardLimit" }
+if ($NoDiscovery)     { $NodeArgs += "--no-discovery" }
+if ($DryRun)          { $NodeArgs += "--dry-run" }
+if ($Sources)         { $NodeArgs += "sources=$Sources" }
 
 Write-Host ""
 Write-Host "=== Hydra Nightly Runner ===" -ForegroundColor Cyan
@@ -62,12 +74,9 @@ Write-Host "  Script:    $NightlyScript"
 Write-Host "  Log:       $LogFile"
 Write-Host "  Date:      $DateStr"
 Write-Host "  Args:      $($NodeArgs -join ' ')"
+if ($NoDiscovery) { Write-Host "  Discovery: disabled" -ForegroundColor Yellow }
+if ($DryRun)      { Write-Host "  Mode:      DRY RUN" -ForegroundColor Yellow }
 Write-Host ""
-
-if ($DryRun) {
-    Write-Host "[DRY RUN] Would execute: node $($NodeArgs -join ' ')" -ForegroundColor Yellow
-    exit 0
-}
 
 # Change to project directory
 Push-Location $Project
@@ -82,7 +91,7 @@ try {
         Write-Host "Nightly runner exited with code $exitCode" -ForegroundColor Yellow
     } else {
         Write-Host ""
-        Write-Host "Nightly run complete. Review with: npm run hydra:nightly:review" -ForegroundColor Green
+        Write-Host "Nightly run complete. Review with: npm run nightly:review" -ForegroundColor Green
     }
 }
 catch {

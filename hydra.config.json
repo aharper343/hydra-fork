@@ -311,6 +311,48 @@
       "enabled": true
     }
   },
+  "nightly": {
+    "enabled": true,
+    "baseBranch": "dev",
+    "branchPrefix": "nightly",
+    "maxTasks": 5,
+    "maxHours": 6,
+    "perTaskTimeoutMs": 900000,
+    "sources": {
+      "todoMd": true,
+      "todoComments": true,
+      "githubIssues": true,
+      "configTasks": true,
+      "aiDiscovery": true
+    },
+    "aiDiscovery": {
+      "agent": "gemini",
+      "maxSuggestions": 5,
+      "focus": [],
+      "timeoutMs": 300000
+    },
+    "budget": {
+      "softLimit": 400000,
+      "hardLimit": 500000,
+      "perTaskEstimate": 80000,
+      "handoffThreshold": 0.7,
+      "handoffAgent": "codex",
+      "handoffModel": "o4-mini"
+    },
+    "tasks": [],
+    "investigator": {
+      "enabled": true
+    },
+    "tokenBudget": {
+      "softLimit": 400000,
+      "hardLimit": 500000,
+      "perTaskEstimate": 80000,
+      "handoffThreshold": 0.7,
+      "warningThreshold": 0.5
+    },
+    "perTaskTimeoutMin": 15,
+    "handoffModel": "o4-mini"
+  },
   "modelRecovery": {
     "enabled": true,
     "autoPersist": true,
@@ -352,18 +394,5 @@
     "pollIntervalMs": 1500,
     "maxOutputBufferKB": 8,
     "autoChain": true
-  },
-  "nightly": {
-    "tokenBudget": {
-      "softLimit": 400000,
-      "hardLimit": 500000,
-      "perTaskEstimate": 80000,
-      "handoffThreshold": 0.7,
-      "warningThreshold": 0.5
-    },
-    "maxTasks": 5,
-    "maxHours": 6,
-    "perTaskTimeoutMin": 15,
-    "handoffModel": "o4-mini"
   }
 }

@@ -84,7 +84,7 @@ pwsh -File E:/Dev/Hydra/bin/hydra.ps1
 
 - **Autonomous self-improvement**: 7-phase evolve pipeline with budget tracking, investigator self-healing, and knowledge accumulation
 - **Evolve suggestions backlog**: Persistent improvement ideas from rejected/deferred rounds, user input, and review sessions — interactive picker at session start, CLI management, Jaccard dedup
-- **Nightly automation**: Scheduled task processing with safety guardrails and review workflow
+- **Nightly automation**: Config-driven 5-phase pipeline (scan, AI discovery, prioritize, execute, report) with multi-source task scanning, intelligent agent routing, and smart merge review
 - **GitHub integration**: PR creation from operator (`:pr create`), review flow PR option, repo detection, open PR listing — requires `gh` CLI
 
 ### Platform & Infrastructure
@@ -172,10 +172,9 @@ hydra/
     hydra-metrics.mjs        # Call metrics collection
     hydra-models.mjs         # Model discovery (API/CLI/config) and listing
     hydra-models-select.mjs  # Interactive model + reasoning effort picker
-    hydra-nightly.mjs        # Nightly task automation
-    hydra-nightly-guardrails.mjs # Nightly safety guardrails
-    hydra-nightly-queue.mjs  # Nightly task queue management
-    hydra-nightly-review.mjs # Nightly round review and status
+    hydra-nightly.mjs        # Nightly 5-phase pipeline (scan/discover/prioritize/execute/report)
+    hydra-nightly-discovery.mjs # AI-powered task suggestion for nightly
+    hydra-nightly-review.mjs # Nightly review with smart merge
     hydra-openai.mjs         # OpenAI API streaming client
     hydra-operator.mjs       # Interactive command center
     hydra-prompt-choice.mjs  # Interactive numbered-choice prompt UI
@@ -312,6 +311,65 @@ The evolve pipeline maintains a persistent backlog of improvement ideas sourced 
     }
   }
 }
+```
+
+## Nightly Runner
+
+Config-driven autonomous overnight pipeline. Scans multiple sources for tasks, optionally uses AI discovery to suggest improvements, prioritizes and executes with intelligent agent routing and budget-aware handoff.
+
+**5-phase pipeline:** SCAN → DISCOVER → PRIORITIZE → EXECUTE → REPORT
+
+**Sources:** TODO/FIXME code comments, `docs/TODO.md`, GitHub issues, static config tasks, AI discovery (via agent analysis)
+
+**Features:**
+- Multi-source task scanning via `hydra-tasks-scanner.mjs`
+- Optional AI discovery phase (default: gemini analyzes codebase for improvements)
+- Intelligent agent routing: `classifyTask()` + `bestAgentFor()` picks optimal agent per task
+- Budget-aware handoff: switches to economy agent (codex/o4-mini) at configurable threshold
+- Model recovery and investigator self-healing on failures
+- Smart merge review: auto-rebases when base branch has advanced
+- `--dry-run` mode for scan + prioritize without executing
+- Fully unattended — no interactive prompts
+
+**Config** (`hydra.config.json`):
+```json
+{
+  "nightly": {
+    "baseBranch": "dev",
+    "branchPrefix": "nightly",
+    "maxTasks": 5,
+    "maxHours": 4,
+    "sources": {
+      "todoMd": true,
+      "todoComments": true,
+      "githubIssues": true,
+      "configTasks": true,
+      "aiDiscovery": true
+    },
+    "aiDiscovery": {
+      "agent": "gemini",
+      "maxSuggestions": 5,
+      "focus": []
+    },
+    "budget": {
+      "softLimit": 400000,
+      "hardLimit": 500000,
+      "handoffThreshold": 0.70,
+      "handoffAgent": "codex",
+      "handoffModel": "o4-mini"
+    },
+    "tasks": [],
+    "investigator": { "enabled": true }
+  }
+}
+```
+
+**CLI flags:**
+```bash
+node lib/hydra-nightly.mjs                         # defaults from config
+node lib/hydra-nightly.mjs --dry-run               # scan + prioritize only
+node lib/hydra-nightly.mjs --no-discovery          # skip AI discovery
+node lib/hydra-nightly.mjs max-tasks=3 max-hours=2 # override limits
 ```
 
 ## Tasks Runner
