@@ -60,10 +60,11 @@ pwsh -File E:/Dev/Hydra/bin/hydra.ps1
 - **Headless workers**: Background agent execution with claim-execute-report loop, per-agent permission modes
 - **Cross-model verification**: Route output through a paired verifier agent for correctness checks
 - **Agent terminal auto-launch**: Operator spawns Windows Terminal/PowerShell windows per agent head
+- **Agent Forge**: Multi-model agent creation pipeline (`:forge`) — Gemini analyzes codebase, Claude designs spec, Gemini critiques, Claude refines, optional live test. Persists to config and auto-registers. MCP tools: `hydra_forge`, `hydra_forge_list`
 
 ### Monitoring & Safety
 
-- **Token usage monitoring**: Real token tracking for Claude (JSON output) and Codex (JSONL `--json` output), with per-agent breakdown in `:usage`. Auto-switches models at critical levels.
+- **Token usage monitoring**: Three-tier budget tracking (weekly primary, daily secondary, sliding window) from Claude Code's `stats-cache.json`. Per-agent breakdown in `:usage`. Auto-switches models at critical levels.
 - **Metrics dashboard**: Per-agent call counts, response times, real + estimated tokens, success rates
 - **Contingency planning**: When approaching rate limits, offers model switching, agent handoff, or progress saving
 - **Project-aware verification**: Auto-detects verification command by stack (or uses explicit config)

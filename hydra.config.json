@@ -76,14 +76,18 @@
     "criticalThresholdPercent": 90,
     "claudeStatsPath": "auto",
     "dailyTokenBudget": {
-      "claude-opus-4-6": 2000000,
-      "claude-sonnet-4-5-20250929": 5000000
+      "claude-opus-4-6": 5000000,
+      "claude-sonnet-4-5-20250929": 15000000
+    },
+    "weeklyTokenBudget": {
+      "claude-opus-4-6": 25000000,
+      "claude-sonnet-4-5-20250929": 75000000
     },
     "plan": "max_20x",
     "windowHours": 5,
     "windowTokenBudget": {
-      "claude-opus-4-6": 900000,
-      "claude-sonnet-4-5-20250929": 2500000
+      "claude-opus-4-6": 2500000,
+      "claude-sonnet-4-5-20250929": 7500000
     }
   },
   "verification": {
@@ -276,6 +280,12 @@
     "labels": [],
     "reviewers": [],
     "prBodyFooter": ""
+  },
+  "forge": {
+    "enabled": true,
+    "autoTest": false,
+    "phaseTimeoutMs": 300000,
+    "storageDir": "docs/coordination/forge"
   },
   "worktrees": {
     "enabled": false,
