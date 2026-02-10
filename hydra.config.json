@@ -56,9 +56,9 @@
       "claude": "default"
     },
     "balanced": {
-      "gemini": "default",
+      "gemini": "fast",
       "codex": "fast",
-      "claude": "default"
+      "claude": "fast"
     },
     "economy": {
       "gemini": "cheap",
