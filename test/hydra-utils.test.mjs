@@ -14,6 +14,7 @@ import {
   normalizeTask,
   dedupeTasks,
   classifyPrompt,
+  selectTandemPair,
   parseTestOutput,
   nowIso,
   runId,
@@ -358,6 +359,83 @@ test('classifyPrompt confidence is between 0 and 1', () => {
     const result = classifyPrompt(p);
     assert.ok(result.confidence >= 0 && result.confidence <= 1, `confidence ${result.confidence} out of range for "${p}"`);
   }
+});
+
+// ── classifyPrompt route strategy ────────────────────────────────────────────
+
+test('classifyPrompt returns routeStrategy field', () => {
+  const result = classifyPrompt('fix the login bug');
+  assert.ok(['single', 'tandem', 'council'].includes(result.routeStrategy));
+  assert.ok('tandemPair' in result);
+});
+
+test('classifyPrompt routes simple prompts as single', () => {
+  const result = classifyPrompt('fix the typo in auth.js');
+  assert.equal(result.routeStrategy, 'single');
+  assert.equal(result.tandemPair, null);
+});
+
+test('classifyPrompt routes moderate prompts as tandem', () => {
+  const result = classifyPrompt('update the user profile page with better validation');
+  if (result.tier === 'moderate' || (result.tier === 'simple' && result.routeStrategy === 'tandem')) {
+    assert.equal(result.routeStrategy, 'tandem');
+    assert.ok(result.tandemPair);
+    assert.ok(result.tandemPair.lead);
+    assert.ok(result.tandemPair.follow);
+  }
+});
+
+test('classifyPrompt routes high-complexity prompts as council', () => {
+  const result = classifyPrompt(
+    'Should we redesign the entire authentication system? We need to compare OAuth vs JWT approaches, ' +
+    'evaluate the trade-offs of each, and decide which strategy to use going forward. ' +
+    'Also investigate whether we should migrate the existing sessions.'
+  );
+  assert.equal(result.routeStrategy, 'council');
+});
+
+test('classifyPrompt detects tandem indicators (two-phase language)', () => {
+  const result = classifyPrompt('first analyze the code then implement the fix');
+  assert.equal(result.routeStrategy, 'tandem');
+  assert.ok(result.reason.includes('two-phase language'));
+});
+
+test('classifyPrompt detects review and fix as tandem indicator', () => {
+  const result = classifyPrompt('review and fix the auth module');
+  assert.equal(result.routeStrategy, 'tandem');
+});
+
+// ── selectTandemPair ─────────────────────────────────────────────────────────
+
+test('selectTandemPair returns correct pair for each task type', () => {
+  const pairs = {
+    planning: { lead: 'claude', follow: 'codex' },
+    architecture: { lead: 'claude', follow: 'gemini' },
+    review: { lead: 'gemini', follow: 'claude' },
+    testing: { lead: 'codex', follow: 'gemini' },
+    security: { lead: 'gemini', follow: 'claude' },
+  };
+  for (const [taskType, expected] of Object.entries(pairs)) {
+    const result = selectTandemPair(taskType, 'claude');
+    assert.deepEqual(result, expected, `wrong pair for ${taskType}`);
+  }
+});
+
+test('selectTandemPair respects agent filter', () => {
+  const result = selectTandemPair('planning', 'claude', ['claude', 'gemini']);
+  // planning lead=claude, follow=codex, but codex not available → swap follow
+  assert.equal(result.lead, 'claude');
+  assert.equal(result.follow, 'gemini');
+});
+
+test('selectTandemPair degrades to null when only 1 agent available', () => {
+  const result = selectTandemPair('planning', 'claude', ['claude']);
+  assert.equal(result, null);
+});
+
+test('selectTandemPair returns pair with no filter', () => {
+  const result = selectTandemPair('implementation', 'claude');
+  assert.deepEqual(result, { lead: 'claude', follow: 'codex' });
 });
 
 // ── nowIso / runId ───────────────────────────────────────────────────────────

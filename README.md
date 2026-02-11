@@ -36,7 +36,10 @@ pwsh -File E:/Dev/Hydra/bin/hydra.ps1
 
 ### Orchestration & Routing
 
-- **Five orchestration modes**: Auto (triage + delegate), Council (multi-round deliberation), Dispatch (headless pipeline), Smart (auto-select model tier per prompt complexity), Chat (concierge conversation)
+- **Five orchestration modes**: Auto (intelligent 3-way routing), Council (multi-round deliberation), Dispatch (headless pipeline), Smart (auto-select model tier per prompt complexity), Chat (concierge conversation)
+- **Intelligent route classification**: Local heuristic classifies prompts into single/tandem/council routes with zero agent CLI calls
+- **Tandem dispatch**: 2-agent lead-follow pairs (e.g., claude analyzes, codex implements) for moderate prompts — skips expensive mini-round triage
+- **Council gate**: Warns when council mode is overkill, offering efficient alternatives
 - **Affinity-based task routing**: 10 task types x 3 agents = intelligent work assignment
 - **Fast-path dispatch**: Simple prompts bypass council for lower latency single-agent handoffs
 - **Per-command agent selection**: `agents=claude,gemini` to control which agents participate per-prompt
@@ -120,13 +123,13 @@ pwsh -File E:/Dev/Hydra/bin/hydra.ps1
                     |   Daemon  |  (HTTP state + events)
                     +--+--+--+--+
                        |  |  |
-              +--------+  |  +--------+
-              v           v           v
-         +---------+ +---------+ +---------+
-         | Gemini  | |  Codex  | | Claude  |
-         |(3 Pro)  | |(GPT-5.3 Codex)| | (Opus)  |
-         +---------+ +---------+ +---------+
-          Analyst    Implementer  Architect
+           +-----------+  |  +-----------+
+           v              v              v
+     +---------+  +---------------+  +--------+
+     | Gemini  |  |     Codex     |  | Claude |
+     | (3 Pro) |  |(GPT-5.3 Codex)|  | (Opus) |
+     +---------+  +---------------+  +--------+
+       Analyst       Implementer      Architect
 
   Concierge: OpenAI → Anthropic → Google fallback chain
   Sub-agents: security-reviewer, test-writer, doc-generator,
