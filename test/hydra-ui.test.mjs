@@ -87,8 +87,10 @@ test('shortModelName extracts Claude model names', () => {
 });
 
 test('shortModelName extracts Gemini model names', () => {
-  assert.equal(shortModelName('gemini-2.5-flash'), 'flash');
-  assert.equal(shortModelName('gemini-2.5-pro'), 'pro');
+  assert.equal(shortModelName('gemini-2.5-flash'), '2.5-flash');
+  assert.equal(shortModelName('gemini-2.5-pro'), '2.5-pro');
+  assert.equal(shortModelName('gemini-3-pro-preview'), 'pro');
+  assert.equal(shortModelName('gemini-3-flash-preview'), 'flash');
 });
 
 test('shortModelName extracts OpenAI/Codex model names', () => {
