@@ -124,21 +124,6 @@
     ]
   },
   "roles": {
-    "concierge": {
-      "agent": "codex",
-      "model": "gpt-5",
-      "reasoningEffort": "xhigh"
-    },
-    "investigator": {
-      "agent": "codex",
-      "model": "gpt-5.2",
-      "reasoningEffort": "high"
-    },
-    "nightlyHandoff": {
-      "agent": "codex",
-      "model": "o4-mini",
-      "reasoningEffort": null
-    },
     "architect": {
       "agent": "claude",
       "model": null,
@@ -153,40 +138,31 @@
       "agent": "codex",
       "model": null,
       "reasoningEffort": null
+    },
+    "concierge": {
+      "agent": "codex",
+      "model": "gpt-5",
+      "reasoningEffort": "xhigh"
+    },
+    "investigator": {
+      "agent": "codex",
+      "model": "gpt-5.2",
+      "reasoningEffort": "high"
+    },
+    "nightlyHandoff": {
+      "agent": "codex",
+      "model": "o4-mini",
+      "reasoningEffort": null
     }
   },
   "recommendations": {
-    "concierge": {
-      "models": [
-        "gpt-5",
-        "claude-sonnet-4-5-20250929"
-      ],
-      "reasoningEffort": null,
-      "note": "Needs fast streaming + broad knowledge for chat UX (GPT-5 has no reasoning control)"
-    },
-    "investigator": {
-      "models": [
-        "gpt-5.2",
-        "gpt-5"
-      ],
-      "reasoningEffort": null,
-      "note": "Needs strong reasoning for failure diagnosis (GPT-5 has no reasoning control)"
-    },
-    "nightlyHandoff": {
-      "models": [
-        "o4-mini",
-        "gpt-5"
-      ],
-      "reasoningEffort": "low",
-      "note": "Budget-saving agent — prefer cheap + fast; o4-mini supports low/medium/high effort"
-    },
     "architect": {
       "models": [
         "claude-opus-4-6",
         "gpt-5.3-codex"
       ],
       "reasoningEffort": null,
-      "note": "Complex planning — use strongest available model"
+      "note": "Best abstract reasoning (ARC-AGI-2 68.8%), #1 SWE-bench (80.8%)"
     },
     "analyst": {
       "models": [
@@ -194,7 +170,7 @@
         "claude-opus-4-6"
       ],
       "reasoningEffort": null,
-      "note": "Large context window helps for review tasks"
+      "note": "Best Arena ELO (1,492), GPQA 91.9%, 1M native context"
     },
     "implementer": {
       "models": [
@@ -202,7 +178,31 @@
         "claude-sonnet-4-5-20250929"
       ],
       "reasoningEffort": null,
-      "note": "Fast execution with good instruction following"
+      "note": "Terminal-Bench SOTA (77.3%), fastest flagship (339 tok/s)"
+    },
+    "concierge": {
+      "models": [
+        "gpt-5",
+        "claude-sonnet-4-5-20250929"
+      ],
+      "reasoningEffort": null,
+      "note": "Fast streaming, broad knowledge, $1.25/$10 (GPT-5 has no reasoning control)"
+    },
+    "investigator": {
+      "models": [
+        "gpt-5.2",
+        "gpt-5"
+      ],
+      "reasoningEffort": null,
+      "note": "Best deep reasoning (GPQA 93.2%, FrontierMath 40.3%)"
+    },
+    "nightlyHandoff": {
+      "models": [
+        "o4-mini",
+        "gpt-5"
+      ],
+      "reasoningEffort": "low",
+      "note": "Budget-friendly, SWE-bench 68.1%, o4-mini supports low/medium/high effort"
     }
   },
   "agents": {
