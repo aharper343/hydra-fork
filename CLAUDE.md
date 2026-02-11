@@ -55,10 +55,10 @@ Operator Console (REPL)
 
 ### Key Modules
 
-- **`hydra-operator.mjs`** — Interactive command center. 5 orchestration modes (auto, council, dispatch, smart, chat). Manages workers, status bar, concierge, model switching. Smart ghost text: after `:status` with blocked tasks, shows Tab-submittable suggestion (deterministic + async AI upgrade via `conciergeSuggest()`). This is the largest module (~115KB).
+- **`hydra-operator.mjs`** — Interactive command center. 5 orchestration modes (auto, council, dispatch, smart, chat). Auto mode uses 3-way routing: single (fast-path), tandem (`publishTandemDelegation()` creates 2 tasks + 2 handoffs), or council (direct, skipping mini-round triage). Council gate warns when council is overkill. Manages workers, status bar, concierge, model switching. Smart ghost text: after `:status` with blocked tasks, shows Tab-submittable suggestion (deterministic + async AI upgrade via `conciergeSuggest()`). This is the largest module (~115KB).
 - **`orchestrator-daemon.mjs`** — HTTP server with event-sourced state. Routes split into `daemon/read-routes.mjs` and `daemon/write-routes.mjs`. Handles task lifecycle, handoffs, sessions, worktrees.
 - **`hydra-agents.mjs`** — Agent registry. Each agent has CLI commands, invoke modes (interactive/nonInteractive/headless), task affinities, council roles. Contains `getActiveModel()`, task classification, best-agent routing. Exports `MODEL_REASONING_CAPS` (model prefix → reasoning capabilities lookup), `getModelReasoningCaps(modelId)`, `getEffortOptionsForModel(modelId)`, `formatEffortDisplay(modelId, effortValue)`. `getModelFlags()` adds `--reasoning-effort` for o-series (codex). Note: Claude thinking budget is API-only (handled in `hydra-anthropic.mjs`) — the CLI does not support `--thinking-budget`.
-- **`hydra-config.mjs`** — Central config with `HYDRA_ROOT`, project detection, `loadHydraConfig()`/`saveHydraConfig()`, `getRoleConfig(roleName)`. Config file: `hydra.config.json`. Config sections include `github` (enabled, defaultBase, draft, labels, reviewers, prBodyFooter), `evolve.suggestions` (enabled, autoPopulateFromRejected, autoPopulateFromDeferred, maxPendingSuggestions, maxAttemptsPerSuggestion), `nightly` (enabled, baseBranch, branchPrefix, maxTasks, maxHours, perTaskTimeoutMs, sources, aiDiscovery, budget, tasks, investigator), `providers` (openai.adminKey, anthropic.adminKey, google), `modelRecovery` (enabled, autoPersist, headlessFallback), `rateLimits` (maxRetries, baseDelayMs, maxDelayMs), `persona` (enabled, name, tone, verbosity, formality, humor, identity, voice, agentFraming, processLabels, presets).
+- **`hydra-config.mjs`** — Central config with `HYDRA_ROOT`, project detection, `loadHydraConfig()`/`saveHydraConfig()`, `getRoleConfig(roleName)`. Config file: `hydra.config.json`. Config sections include `github` (enabled, defaultBase, draft, labels, reviewers, prBodyFooter), `evolve.suggestions` (enabled, autoPopulateFromRejected, autoPopulateFromDeferred, maxPendingSuggestions, maxAttemptsPerSuggestion), `nightly` (enabled, baseBranch, branchPrefix, maxTasks, maxHours, perTaskTimeoutMs, sources, aiDiscovery, budget, tasks, investigator), `providers` (openai.adminKey, anthropic.adminKey, google), `routing` (useLegacyTriage, councilGate, tandemEnabled), `modelRecovery` (enabled, autoPersist, headlessFallback), `rateLimits` (maxRetries, baseDelayMs, maxDelayMs), `persona` (enabled, name, tone, verbosity, formality, humor, identity, voice, agentFraming, processLabels, presets).
 - **`hydra-council.mjs`** — 4-phase deliberation: propose (Claude) → critique (Gemini) → refine (Claude) → implement (Codex). Async agent calls via `executeAgentWithRecovery()` with rate limit retry (backoff + 1 retry on 429), doctor notification on phase failure, and recovery tracking in transcript.
 - **`hydra-evolve.mjs`** — 7-phase autonomous improvement rounds with budget tracking, investigator self-healing, knowledge accumulation, and rate limit resilience (exponential backoff on 429/RESOURCE_EXHAUSTED for Gemini direct API and all agents via `executeAgentWithRetry`).
 - **`hydra-concierge.mjs`** — Multi-provider conversational front-end (OpenAI → Anthropic → Google fallback chain). Detects `[DISPATCH]` intent to escalate. Enriched system prompt with git info, recent completions, active workers. Bidirectional daemon communication via `POST /events/push`. Imports `COST_PER_1K` and `estimateCost` from `hydra-provider-usage.mjs` (re-exports `COST_PER_1K` for backward compat). Exports `getActiveProvider()`, `getConciergeModelLabel()`, `switchConciergeModel()`, `exportConversation()`, `getRecentContext()`, `conciergeSuggest()` (stateless one-shot suggestion for ghost text).
@@ -118,15 +118,24 @@ Executed-By: codex
 
 ### Dispatch Modes
 
-1. **Auto** — Classifies prompt complexity → fast-path simple tasks, mini-round triage for complex
-2. **Council** — Full multi-round deliberation across agents
+1. **Auto** — Classifies prompt locally → 3-way routing: single (fast-path), tandem (2-agent pair), or council (full deliberation). Zero agent CLI calls for classification.
+2. **Council** — Full multi-round deliberation across agents. Council gate warns when prompt is too simple for council.
 3. **Dispatch** — Sequential pipeline: Claude → Gemini → Codex
 4. **Smart** — Auto-selects model tier (economy/balanced/performance) per prompt
 5. **Chat** — Concierge conversational layer, escalates with `!` prefix or `[DISPATCH]` intent
 
+### Route Strategies
+
+Auto mode uses `classifyPrompt()` to determine `routeStrategy`:
+- **`single`** — Simple prompts: 1 task, 1 handoff, 0 agent CLI calls (fast-path dispatch)
+- **`tandem`** — Moderate prompts: 2 tasks + 2 handoffs (lead→follow pair), 0 agent CLI calls. Task-type matrix selects optimal pair (e.g., planning: claude→codex, review: gemini→claude). Tandem indicators (`first...then`, `review and fix`) can upgrade simple prompts to tandem.
+- **`council`** — Complex prompts (complexScore >= 0.6): full council deliberation, skips mini-round triage (saves 4 agent calls)
+
+Legacy mini-round triage available via `routing.useLegacyTriage: true` config. Council gate (`routing.councilGate: true`, default) shows `promptChoice()` when council mode is overkill, offering the efficient route instead.
+
 ### Task Routing
 
-10 task types (planning, architecture, review, refactor, implementation, analysis, testing, security, research, documentation) × 3 physical agents + 6 virtual sub-agents with affinity scores. `classifyTask()` in hydra-agents.mjs selects the optimal agent. Virtual sub-agents (e.g. `security-reviewer`) resolve to their base physical agent for CLI dispatch via `resolvePhysicalAgent()`.
+10 task types (planning, architecture, review, refactor, implementation, analysis, testing, security, research, documentation) × 3 physical agents + 6 virtual sub-agents with affinity scores. `classifyTask()` in hydra-agents.mjs selects the optimal agent. Virtual sub-agents (e.g. `security-reviewer`) resolve to their base physical agent for CLI dispatch via `resolvePhysicalAgent()`. `selectTandemPair()` in hydra-utils.mjs maps task types to optimal lead→follow agent pairs, respecting agent filters.
 
 ## Code Conventions
 
