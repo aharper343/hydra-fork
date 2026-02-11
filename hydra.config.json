@@ -370,6 +370,11 @@
     "recurringThreshold": 3,
     "recurringWindowDays": 7
   },
+  "routing": {
+    "useLegacyTriage": false,
+    "councilGate": true,
+    "tandemEnabled": true
+  },
   "modelRecovery": {
     "enabled": true,
     "autoPersist": true,
