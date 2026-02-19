@@ -82,7 +82,7 @@ test('formatElapsed handles negative and null', () => {
 
 test('shortModelName extracts Claude model names', () => {
   assert.equal(shortModelName('claude-opus-4-6'), 'opus');
-  assert.equal(shortModelName('claude-sonnet-4-5-20250929'), 'sonnet');
+  assert.equal(shortModelName('claude-sonnet-4-5-20250929'), 'sonnet-4.5');
   assert.equal(shortModelName('claude-haiku-4-5-20251001'), 'haiku');
 });
 
