@@ -13,7 +13,7 @@
       "default": "gpt-5.2-codex",
       "fast": "o4-mini",
       "cheap": "o4-mini",
-      "active": "gpt-5.2",
+      "active": "gpt-5.2-codex",
       "reasoningEffort": null
     },
     "claude": {
@@ -176,11 +176,12 @@
   "recommendations": {
     "architect": {
       "models": [
+        "claude-sonnet-4-6",
         "claude-opus-4-6",
         "gpt-5.2-codex"
       ],
       "reasoningEffort": null,
-      "note": "Best abstract reasoning (ARC-AGI-2 68.8%), #1 SWE-bench (80.8%)"
+      "note": "Strong coding + agentic at 40% lower cost than Opus; Opus available for highest-complexity tasks"
     },
     "analyst": {
       "models": [

@@ -145,7 +145,7 @@ describe('query functions', () => {
 
   it('getAgentPresets returns correct presets', () => {
     const p = getAgentPresets('claude');
-    assert.equal(p.default, 'claude-opus-4-6');
+    assert.equal(p.default, 'claude-sonnet-4-6');
     assert.equal(p.fast, 'claude-sonnet-4-5-20250929');
     assert.equal(p.cheap, 'claude-haiku-4-5-20251001');
   });
