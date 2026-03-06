@@ -19,7 +19,7 @@
     .\bin\hydra-audit.ps1
 
     # Audit a specific project
-    .\bin\hydra-audit.ps1 -Project "E:\Dev\SideQuest"
+    .\bin\hydra-audit.ps1 -Project "C:\path\to\YourProject"
 
     # Only run specific categories
     .\bin\hydra-audit.ps1 -Categories "security,tests"

@@ -3,7 +3,19 @@
   "version": "1.2.0",
   "description": "Multi-agent AI orchestration system",
   "type": "module",
-  "private": true,
+  "license": "MIT",
+  "author": "Silly Pepper",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/PrimeLocus/Hydra.git"
+  },
+  "homepage": "https://github.com/PrimeLocus/Hydra#readme",
+  "bugs": {
+    "url": "https://github.com/PrimeLocus/Hydra/issues"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "bin": {
     "hydra": "./bin/hydra-cli.mjs",
     "hydra-client": "./lib/orchestrator-client.mjs",

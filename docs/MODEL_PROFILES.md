@@ -1,6 +1,6 @@
 # Hydra Model Profiles & Benchmark Reference
 
-> Last updated: February 10, 2026
+> Last updated: March 6, 2026
 > Purpose: Inform default model assignments, roster recommendations, and smart-mode routing across all Hydra positions.
 
 ---
@@ -235,6 +235,44 @@
 - No standard SWE-bench Verified score reported
 
 **Best For:** Implementation, refactoring, agentic terminal tasks, file editing, headless workers.
+
+---
+
+#### GPT-5.4
+
+| Attribute | Value |
+|---|---|
+| **Model ID** | `gpt-5.4` |
+| **Released** | March 5, 2026 |
+| **Context** | 1,050,000 tokens (1.05M) |
+| **Max Output** | 128K tokens |
+| **Pricing** | $2.50 / $15 per 1M (in/out) |
+| **Speed** | ~78 tok/s (xhigh reasoning) |
+| **Reasoning** | `none` (default), `low`, `medium`, `high`, `xhigh` |
+
+**Key Benchmarks:**
+
+| Benchmark | Score | Rank |
+|---|---|---|
+| SWE-bench Pro | **57.7%** | #1 |
+| GPQA Diamond | 84.2% | -- |
+| AIME 2025 | **100%** | Tied #1 |
+| MMLU | 91% | -- |
+
+**Strengths:**
+- Largest context of any OpenAI model (1.05M tokens)
+- Best SWE-bench Pro score (57.7%)
+- Full reasoning control with 5 effort levels including `none` for speed
+- General-purpose flagship (not CLI-specific like 5.3-Codex)
+- Strong computer use and code generation capabilities
+- 128K output capacity
+
+**Weaknesses:**
+- Slower than GPT-5.3-Codex (78 tok/s vs 424 tok/s)
+- More expensive than 5.3-Codex ($2.50/$15 vs $1.75/$14)
+- Reasoning default is `none` (must set explicitly for deep reasoning)
+
+**Best For:** Implementation, refactoring, long-context analysis, computer use, agentic tasks.
 
 ---
 
@@ -547,7 +585,7 @@
 |---|---|---|---|
 | **Architect** | Claude Opus 4.6 | Planning, decomposition, system design | Abstract reasoning, code quality |
 | **Analyst** | Gemini 3 Pro | Review, critique, risk identification | Analytical depth, long context |
-| **Implementer** | GPT-5.3-Codex | Code generation, refactoring, execution | Speed, file editing, terminal ops |
+| **Implementer** | GPT-5.4 | Code generation, refactoring, execution | Long context, reasoning, code generation |
 | **Concierge** | GPT-5 | Fast streaming chat, broad knowledge | Low latency, good enough quality |
 | **Investigator** | GPT-5.2 | Failure diagnosis, root-cause analysis | Deep reasoning, code understanding |
 | **Nightly Handoff** | o4-mini | Budget batch work, simple tasks | Cost efficiency, decent quality |
@@ -559,7 +597,7 @@
 | **Propose** | Claude (Opus 4.6) | Best at architectural thinking, ARC-AGI-2 #1 |
 | **Critique** | Gemini (3 Pro) | Strong analysis, different perspective, GPQA near-#1 |
 | **Refine** | Claude (Opus 4.6) | Synthesizes feedback into coherent plan |
-| **Implement** | Codex (GPT-5.3-Codex) | Fastest implementation, Terminal-Bench #1 |
+| **Implement** | Codex (GPT-5.4) | SWE-bench Pro #1, 1.05M context |
 
 ### Forge Pipeline Phases
 
@@ -609,7 +647,7 @@
 
 | Preset | Model | Rationale |
 |---|---|---|
-| **default** | `gpt-5.2-codex` | #1 Terminal-Bench (77.3%), fastest (339 tok/s) |
+| **default** | `gpt-5.4` | SWE-bench Pro 57.7%, 1.05M context, 5-level reasoning |
 | **fast** | `o4-mini` | $1.10/$4.40, SWE-bench 68.1%, great math |
 | **cheap** | `o4-mini` | Same model, best budget reasoning |
 | *alt-default* | `gpt-5.2` | When deep reasoning > speed (GPQA 93.2%) |
@@ -629,7 +667,7 @@
 |---|---|---|---|---|
 | **architect** | claude | `claude-sonnet-4-6` (default) | adaptive | Strong agentic coding at 40% lower cost; Opus available for highest-complexity |
 | **analyst** | gemini | `gemini-3-pro-preview` | thinking_level: HIGH | Best Arena ELO, GPQA 91.9%, 1M context |
-| **implementer** | codex | `gpt-5.2-codex` | high | Terminal-Bench SOTA, fastest flagship |
+| **implementer** | codex | `gpt-5.4` | none | SWE-bench Pro 57.7%, 1.05M context |
 | **concierge** | codex | `gpt-5` | low | Fast streaming, broad knowledge, $1.25/$10 |
 | **investigator** | codex | `gpt-5.2` | xhigh | Best deep reasoning (GPQA 93.2%, FrontierMath 40.3%) |
 | **nightlyHandoff** | codex | `o4-mini` | low | Budget-friendly, decent SWE-bench 68.1%, great math |
@@ -646,7 +684,7 @@
 
 | Tier | Claude | Codex | Gemini |
 |---|---|---|---|
-| **performance** | opus-4-6 | gpt-5.2-codex | gemini-3-pro-preview |
+| **performance** | opus-4-6 | gpt-5.4 | gemini-3-pro-preview |
 | **balanced** | sonnet-4-5 | o4-mini | gemini-3-flash-preview |
 | **economy** | haiku-4-5 | o4-mini | gemini-3-flash-preview |
 
@@ -702,6 +740,7 @@
 | Model | Input | Output | Effective $/quality |
 |---|---|---|---|
 | Claude Opus 4.6 | $5.00 | $25.00 | Premium |
+| GPT-5.4 | $2.50 | $15.00 | Mid-high |
 | GPT-5.3-Codex | ~$1.75 | ~$14.00 | Mid-high |
 | GPT-5.2 | $1.75 | $14.00 | Mid-high |
 | GPT-5 | $1.25 | $10.00 | Mid |
@@ -735,6 +774,7 @@
 
 | Model | tok/s | TTFT | Notes |
 |---|---|---|---|
+| GPT-5.4 | ~78 | -- | Flagship general-purpose |
 | GPT-5.3-Codex | **~339** | -- | Fastest flagship |
 | Gemini 3 Flash | ~218 | <1s | Fastest economy |
 | Claude Haiku 4.5 | ~108-200 | ~0.50s | Fastest Claude |
@@ -755,7 +795,7 @@
 - **Gemini 2.5.x**: Uses `thinkingBudget` (0-24576 tokens). Can disable thinking with budget=0. Different API from 3.x.
 - **Claude 4.6**: Uses adaptive thinking (`effort`: low/medium/high/max). `budget_tokens` deprecated.
 - **Claude 4.5/Haiku 4.5**: Uses extended thinking with `budget_tokens`. No adaptive thinking.
-- **OpenAI GPT-5.x**: Uses `reasoning_effort` (`minimal`/`low`/`medium`/`high` for GPT-5; adds `none`/`xhigh` for GPT-5.2).
+- **OpenAI GPT-5.x**: Uses `reasoning_effort` (`minimal`/`low`/`medium`/`high` for GPT-5; adds `none`/`xhigh` for GPT-5.2 and GPT-5.4).
 - **OpenAI o-series**: Uses `reasoning_effort` (`low`/`medium`/`high`).
 - **Codex CLI**: GPT-5.3-Codex requires Responses API only (not Chat Completions).
 
@@ -777,6 +817,7 @@ Human review remains essential for all automated code changes.
 | GPT-4.1/4.1-mini/4.1-nano | **1M** | Production |
 | Claude Opus 4.6 | 200K (**1M beta**) | Beta |
 | Claude Sonnet 4.5 | 200K (**1M beta**) | Beta |
+| GPT-5.4 | **1.05M** | Production |
 | GPT-5/5.2/5.3-Codex | **400K** | Production |
 | o3/o4-mini | 200K | Production |
 | Claude Haiku 4.5 | 200K | Production |
