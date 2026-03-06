@@ -21,7 +21,7 @@
 
     # Task Scheduler (create via taskschd.msc):
     #   Program: pwsh.exe
-    #   Arguments: -NoProfile -ExecutionPolicy Bypass -File "E:\Dev\Hydra\bin\hydra-evolve.ps1"
+    #   Arguments: -NoProfile -ExecutionPolicy Bypass -File "C:\path\to\Hydra\bin\hydra-evolve.ps1"
     #   Start in: C:\Dev\MyProject
     #   Trigger: Weekly, Sunday at 02:00
 #>

@@ -2,7 +2,8 @@ node_modules/
 .idea/
 .claude/
 docs/coordination/
-.env
+.env*
+!.env.example
 nul
 /docs/AUDIT_REPORT.md
 .build-exe/

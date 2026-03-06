@@ -21,7 +21,7 @@ Hydra coordinates three AI coding agents (Gemini CLI, Codex CLI, Claude Code) th
 
 ```powershell
 # 1. Clone and install
-cd E:\Dev\Hydra
+cd path\to\Hydra
 npm install
 pwsh -File .\bin\install-hydra-cli.ps1
 
@@ -146,10 +146,10 @@ Notes:
                        |  |  |
           +------------+  |  +-----------+
           v               v              v
-     +---------+  +---------------+  +--------+
-     | Gemini  |  |     Codex     |  | Claude |
-     | (3 Pro) |  |(GPT-5.3 Codex)|  | (Opus) |
-     +---------+  +---------------+  +--------+
+     +---------+  +-----------+  +--------+
+     | Gemini  |  |   Codex   |  | Claude |
+     | (3 Pro) |  | (GPT-5.4) |  | (Opus) |
+     +---------+  +-----------+  +--------+
        Analyst       Implementer      Architect
 
   Concierge: OpenAI → Anthropic → Google fallback chain
@@ -549,7 +549,7 @@ Analysis-only code audit that fans out category reviews to multiple agents and w
 **CLI flags:**
 ```bash
 node lib/hydra-audit.mjs                                  # defaults from config
-node lib/hydra-audit.mjs project=E:/Dev/SideQuest         # target another project
+node lib/hydra-audit.mjs project=/path/to/YourProject      # target another project
 node lib/hydra-audit.mjs categories=security,tests        # category subset
 node lib/hydra-audit.mjs agents=gemini,claude --economy   # agent subset + cheap models
 node lib/hydra-audit.mjs max-files=300 timeout=420000     # override scan cap + per-agent timeout

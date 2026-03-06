@@ -20,8 +20,8 @@
 
 ```powershell
 # Clone to a dedicated directory
-git clone <repo-url> E:\Dev\Hydra
-cd E:\Dev\Hydra
+git clone <repo-url> C:\path\to\Hydra
+cd C:\path\to\Hydra
 ```
 
 ### 2. Install Dependencies
@@ -67,12 +67,12 @@ This creates the `docs/coordination/` directory with:
 ### 6. (Optional) Legacy PowerShell Profile Function
 
 ```powershell
-pwsh -File E:\Dev\Hydra\bin\install-hydra-profile.ps1
+pwsh -File C:\path\to\Hydra\bin\install-hydra-profile.ps1
 ```
 
 Use this only if you want the old profile-function based command. The global npm install already provides `hydra`.
 
-Uninstall: `pwsh -File E:\Dev\Hydra\bin\install-hydra-profile.ps1 -Uninstall`
+Uninstall: `pwsh -File C:\path\to\Hydra\bin\install-hydra-profile.ps1 -Uninstall`
 
 ## Build an Installation Package
 
@@ -110,21 +110,21 @@ Add these scripts to your project's `package.json`:
 ```json
 {
   "scripts": {
-    "hydra:start": "node E:/Dev/Hydra/lib/orchestrator-daemon.mjs start",
-    "hydra:stop": "node E:/Dev/Hydra/lib/orchestrator-client.mjs stop",
-    "hydra:status": "node E:/Dev/Hydra/lib/orchestrator-client.mjs status",
-    "hydra:summary": "node E:/Dev/Hydra/lib/orchestrator-client.mjs summary",
-    "hydra:stats": "node E:/Dev/Hydra/lib/orchestrator-client.mjs stats",
-    "hydra:usage": "node E:/Dev/Hydra/lib/hydra-usage.mjs",
-    "hydra:model": "node E:/Dev/Hydra/lib/orchestrator-client.mjs model",
-    "hydra:go": "node E:/Dev/Hydra/lib/hydra-operator.mjs mode=auto",
-    "hydra:council": "node E:/Dev/Hydra/lib/hydra-council.mjs",
-    "hydra:next": "node E:/Dev/Hydra/lib/orchestrator-client.mjs next",
-    "hydra:add": "node E:/Dev/Hydra/lib/orchestrator-client.mjs task:add",
-    "hydra:update": "node E:/Dev/Hydra/lib/orchestrator-client.mjs task:update",
-    "hydra:handoff": "node E:/Dev/Hydra/lib/orchestrator-client.mjs handoff",
-    "hydra:launch": "pwsh -NoProfile -ExecutionPolicy Bypass -File E:/Dev/Hydra/bin/hydra-launch.ps1",
-    "hydra": "pwsh -NoProfile -ExecutionPolicy Bypass -File E:/Dev/Hydra/bin/hydra.ps1"
+    "hydra:start": "node /path/to/Hydra/lib/orchestrator-daemon.mjs start",
+    "hydra:stop": "node /path/to/Hydra/lib/orchestrator-client.mjs stop",
+    "hydra:status": "node /path/to/Hydra/lib/orchestrator-client.mjs status",
+    "hydra:summary": "node /path/to/Hydra/lib/orchestrator-client.mjs summary",
+    "hydra:stats": "node /path/to/Hydra/lib/orchestrator-client.mjs stats",
+    "hydra:usage": "node /path/to/Hydra/lib/hydra-usage.mjs",
+    "hydra:model": "node /path/to/Hydra/lib/orchestrator-client.mjs model",
+    "hydra:go": "node /path/to/Hydra/lib/hydra-operator.mjs mode=auto",
+    "hydra:council": "node /path/to/Hydra/lib/hydra-council.mjs",
+    "hydra:next": "node /path/to/Hydra/lib/orchestrator-client.mjs next",
+    "hydra:add": "node /path/to/Hydra/lib/orchestrator-client.mjs task:add",
+    "hydra:update": "node /path/to/Hydra/lib/orchestrator-client.mjs task:update",
+    "hydra:handoff": "node /path/to/Hydra/lib/orchestrator-client.mjs handoff",
+    "hydra:launch": "pwsh -NoProfile -ExecutionPolicy Bypass -File /path/to/Hydra/bin/hydra-launch.ps1",
+    "hydra": "pwsh -NoProfile -ExecutionPolicy Bypass -File /path/to/Hydra/bin/hydra.ps1"
   }
 }
 ```
