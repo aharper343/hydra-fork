@@ -20,114 +20,45 @@
   H Y D R A
 ```
 
-Hydra coordinates three AI coding agents (Gemini CLI, Codex CLI, Claude Code) through a shared task queue, affinity-based routing, and multi-round deliberation. Built for Windows with PowerShell. Minimal dependencies: `picocolors`, `cross-spawn`, `@modelcontextprotocol/sdk`, `zod`. Optional: `@opentelemetry/api` for distributed tracing.
+Hydra coordinates three AI coding agents — [Gemini CLI](https://github.com/google-gemini/gemini-cli), [Codex CLI](https://github.com/openai/codex), and [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — through a shared HTTP daemon with a task queue, intelligent routing, and multi-round deliberation.
+
+## Why Hydra?
+
+Each AI coding agent has strengths: Claude is a strong architect, Gemini excels at analysis and critique, Codex is a fast implementer. Running them individually means choosing one perspective per task.
+
+Hydra lets you use all three together:
+
+- **Route work to the right agent** — a local heuristic classifies your prompt and picks the best agent (or pair, or all three) with zero extra API calls
+- **Run agents in parallel** — headless workers claim tasks from a shared queue and execute concurrently in isolated git worktrees
+- **Multi-round deliberation** — Claude proposes, Gemini critiques, Claude refines, Codex implements
+- **Self-improving pipelines** — nightly automation scans your codebase for TODOs, issues, and improvements, then executes them autonomously with budget tracking and self-healing on failures
+
+## Requirements
+
+- **Node.js 20+**
+- **PowerShell 7+** (for Windows launchers; Linux/macOS can run the Node modules directly)
+- **At least one AI CLI installed:** [`gemini`](https://github.com/google-gemini/gemini-cli), [`codex`](https://github.com/openai/codex), or [`claude`](https://docs.anthropic.com/en/docs/claude-code)
+- Optional: [`gh` CLI](https://cli.github.com) for GitHub integration (PRs, issue scanning)
+- Optional: [`@opentelemetry/api`](https://www.npmjs.com/package/@opentelemetry/api) for distributed tracing
 
 ## Quick Start
 
-```powershell
-# 1. Clone and install
-cd path\to\Hydra
+```bash
+# Clone and install
+git clone https://github.com/PrimeLocus/Hydra.git
+cd Hydra
 npm install
-pwsh -File .\bin\install-hydra-cli.ps1
 
-# 2. Initialize for your project
-cd E:\Dev\YourProject
-hydra-client init
+# Launch the operator console
+node lib/hydra-operator.mjs
 
-# 3. Launch everything (daemon + 3 agent heads + operator)
-hydra --full
-
-# 4. Operator-only mode (recommended default)
-hydra
+# Or on Windows with PowerShell launchers:
+pwsh -File .\bin\install-hydra-cli.ps1   # one-time: adds 'hydra' command
+hydra                                     # operator console
+hydra --full                              # daemon + agent heads + operator
 ```
 
-## Standalone Windows EXE
-
-Build a single-file executable (no Node.js install required on target machine):
-
-```powershell
-npm install
-npm run build:exe
-.\dist\hydra.exe --help
-```
-
-Notes:
-- `hydra.exe` runs operator/daemon/client flows without external Node.
-- `hydra.exe --full` is intentionally disabled (PowerShell head-launch mode is repo install only).
-
-## Features
-
-### Orchestration & Routing
-
-- **Five orchestration modes**: Auto (intelligent 3-way routing), Council (multi-round deliberation), Dispatch (headless pipeline), Smart (auto-select model tier per prompt complexity), Chat (concierge conversation)
-- **Intelligent route classification**: Local heuristic classifies prompts into single/tandem/council routes with zero agent CLI calls
-- **Tandem dispatch**: 2-agent lead-follow pairs (e.g., claude analyzes, codex implements) for moderate prompts — skips expensive mini-round triage
-- **Council gate**: Warns when council mode is overkill, offering efficient alternatives
-- **Affinity-based task routing**: 10 task types x 3 agents = intelligent work assignment
-- **Fast-path dispatch**: Simple prompts bypass council for lower latency single-agent handoffs
-- **Per-command agent selection**: `agents=claude,gemini` to control which agents participate per-prompt
-- **Virtual sub-agents**: Role-specialized agents (security-reviewer, test-writer, doc-generator, researcher) that resolve to physical agents for dispatch
-- **Spec-driven task anchoring**: Complex prompts generate a spec document to anchor all downstream work
-
-### Concierge Chat
-
-- **Multi-provider front-end**: Conversational AI layer (OpenAI → Anthropic → Google fallback chain) — answers questions directly, only escalates to agents when real work is needed
-- **Situational awareness**: Ask "What's going on?", "What is claude working on?", "What's that handoff about?" — concierge fetches real-time activity digest from daemon and agent state
-- **Codebase knowledge**: Ask "How does dispatch work?", "What config options exist for workers?" — concierge injects topic-specific architecture context from CLAUDE.md, module index, and evolve knowledge base
-- **Command-aware**: Typos and near-miss commands caught locally via fuzzy matching (Levenshtein) before falling back to AI suggestion
-- **Runtime model switching**: `:chat model sonnet` switches the concierge provider/model on the fly
-- **Conversation export**: `:chat export` saves concierge history to JSON for analysis
-- **Token cost estimation**: Per-turn cost display after each concierge response
-
-### Agent & Model Management
-
-- **Per-agent model switching**: `hydra model claude=sonnet` to trade quality for speed/cost
-- **Interactive model picker**: Arrow-key browser with type-to-filter, discovers models via API/CLI, sets reasoning effort
-- **Headless workers**: Background agent execution with claim-execute-report loop, per-agent permission modes
-- **Cross-model verification**: Route output through a paired verifier agent for correctness checks
-- **Agent terminal auto-launch**: Operator spawns Windows Terminal/PowerShell windows per agent head
-- **Agent Forge**: Multi-model agent creation pipeline (`:forge`) — Gemini analyzes codebase, Claude designs spec, Gemini critiques, Claude refines, optional live test. Persists to config and auto-registers. MCP tools: `hydra_forge`, `hydra_forge_list`
-
-### Monitoring & Safety
-
-- **Token usage monitoring**: Three-tier budget tracking (weekly primary, daily secondary, sliding window) from Claude Code's `stats-cache.json`. Per-agent breakdown in `:usage`. Auto-switches models at critical levels.
-- **Metrics dashboard**: Per-agent call counts, response times, real + estimated tokens, success rates
-- **Model recovery**: Automatic detection and fallback when a configured model is unavailable. Interactive mode offers choice; headless mode auto-selects fallback. Integrated into evolve, workers, and MCP.
-- **Rate limit resilience**: Detects 429/RESOURCE_EXHAUSTED/QUOTA_EXHAUSTED errors across all providers. Exponential backoff with jitter and server Retry-After support. Evolve pipeline retries rate-limited agents without wasting API calls on investigator diagnosis. Configurable via `rateLimits` config section.
-- **Failure doctor**: Higher-level diagnostic layer that fires on non-trivial pipeline failures. Calls the investigator for diagnosis, triages into follow-up actions (daemon tasks, evolve suggestions, KB entries), and detects recurring error patterns across sessions. Configurable via `doctor` config section.
-- **Contingency planning**: When approaching rate limits, offers model switching, agent handoff, or progress saving
-- **Project-aware verification**: Auto-detects verification command by stack (or uses explicit config)
-- **5-line status bar**: Persistent terminal footer with agent activity, token gauge, dispatch context, and rolling event ticker
-
-### Task & Session Management
-
-- **Checkpoint/resume**: Save and restore intermediate progress during long-running tasks
-- **Session fork/spawn**: Fork sessions to explore alternatives, spawn children for focused subtasks
-- **Session pause/resume**: Pause active sessions with reason tracking, resume with stale recovery
-- **Stale task detection**: Auto-detect tasks idle for 30+ minutes with `/tasks/stale` endpoint
-- **Atomic task claiming**: Claim tokens prevent race conditions in rapid parallel dispatch
-
-### Automation & CI
-
-- **Autonomous self-improvement**: 7-phase evolve pipeline with budget tracking, investigator self-healing, and knowledge accumulation
-- **Evolve suggestions backlog**: Persistent improvement ideas from rejected/deferred rounds, user input, and review sessions — interactive picker at session start, CLI management, Jaccard dedup
-- **Nightly automation**: Config-driven 5-phase pipeline (scan, AI discovery, prioritize, execute, report) with multi-source task scanning, intelligent agent routing, and smart merge review
-- **Commit attribution**: Automated pipeline commits include `Originated-By:` and `Executed-By:` git trailers for provenance tracking. Safety prompts instruct agents to include trailers; `stageAndCommit()` also appends them programmatically.
-- **GitHub integration**: PR creation from operator (`:pr create`), review flow PR option, repo detection, open PR listing — requires `gh` CLI
-
-### Platform & Infrastructure
-
-- **HTTP daemon**: Shared state management with event sourcing, auto-archiving, and cycle detection
-- **Event-sourced mutation log**: Monotonic sequence numbers, typed categories, and full replay support
-- **Git worktree isolation**: Per-task isolated filesystems for true parallel agent work
-- **Codex MCP integration**: Multi-turn context via JSON-RPC over stdio (when Codex MCP server available)
-- **Hydra MCP server**: Official SDK-based MCP server (protocol 2025-03-26) with 11 tools, 5 resources (`hydra://config`, `hydra://metrics`, `hydra://agents`, `hydra://activity`, `hydra://status`), and 3 prompts. `hydra_ask` invokes Gemini/Codex directly (no daemon needed), plus daemon tools when running
-- **Streaming middleware**: Composable onion-style pipeline for provider API calls — rate limiting, circuit breaking, retry, usage tracking, header capture, telemetry, and latency measurement via PeakEWMA
-- **OTel GenAI tracing**: Optional distributed tracing using OpenTelemetry GenAI semantic conventions. Install `@opentelemetry/api` + your preferred exporter for traces in Jaeger, Grafana, Langfuse, or Arize Phoenix. Zero overhead when OTel not installed
-- **Heartbeat crash recovery**: Workers send periodic heartbeats during task execution. Daemon detects stale heartbeats and requeues tasks or moves to dead-letter queue after max attempts
-- **Ghost text prompts**: Claude Code CLI-style greyed-out placeholder hints that cycle contextually and disappear on keystroke
-- **PowerShell-native**: Branded multi-terminal launcher with per-agent polling heads
-- **Project-agnostic**: Works with any Node.js, Rust, Go, or Python project
+Once in the operator console, type a prompt and Hydra routes it automatically. Use `:help` to see all commands.
 
 ## Architecture
 
@@ -162,99 +93,55 @@ Notes:
               researcher, evolve-researcher (virtual → physical)
 ```
 
-## Project Structure
+## Features
 
-```
-hydra/
-  bin/
-    hydra-cli.mjs            # npm global "hydra" command entrypoint
-    hydra.ps1               # Main launcher (daemon + heads + operator)
-    hydra-head.ps1           # Agent polling head
-    hydra-launch.ps1         # Multi-terminal launcher
-    hydra-stats.ps1          # Stats dashboard shortcut
-    hydra-evolve.ps1         # Autonomous self-improvement launcher
-    hydra-nightly.ps1        # Nightly task automation launcher
-    hydra-audit.ps1          # Background audit runner (analysis only)
-    install-hydra-cli.ps1    # Global npm CLI installer/uninstaller
-    install-hydra-profile.ps1 # PowerShell profile installer
-  lib/
-    daemon/
-      read-routes.mjs         # GET/SSE route handlers
-      write-routes.mjs        # POST/mutating route handlers
-    hydra-agents.mjs         # Agent registry, model management, task routing
-    hydra-anthropic.mjs      # Anthropic Messages API streaming client
-    hydra-concierge.mjs      # Multi-provider conversational concierge (intent detection, cost estimation)
-    hydra-concierge-providers.mjs # Provider abstraction + fallback chain orchestration
-    hydra-config.mjs         # Project detection, config loading
-    hydra-context.mjs        # Tiered context builders
-    hydra-council.mjs        # Multi-round deliberation (with agent filtering + specs)
-    hydra-dispatch.mjs       # Single-shot pipeline
-    hydra-doctor.mjs         # Failure diagnostic and triage layer (doctor agent)
-    hydra-env.mjs            # Minimal .env loader (auto-loads on import)
-    hydra-evolve.mjs         # Autonomous self-improvement pipeline (7-phase rounds)
-    hydra-evolve-guardrails.mjs # Evolve safety guardrails
-    hydra-evolve-investigator.mjs # Self-healing failure diagnosis
-    hydra-evolve-knowledge.mjs # Knowledge accumulation across evolve rounds
-    hydra-evolve-suggestions.mjs # Suggestions backlog for evolve pipeline
-    hydra-evolve-suggestions-cli.mjs # CLI for managing evolve suggestions
-    hydra-evolve-review.mjs  # Evolve round review and status
-    hydra-activity.mjs       # Real-time activity digest for concierge situational awareness
-    hydra-codebase-context.mjs # Codebase knowledge injection for concierge
-    hydra-github.mjs         # GitHub integration via gh CLI (PRs, repo detection)
-    hydra-google.mjs         # Google Gemini API streaming client
-    hydra-mcp.mjs            # MCP client for Codex (JSON-RPC over stdio)
-    hydra-mcp-server.mjs     # Hydra MCP server (11 tools + 5 resources + 3 prompts, SDK-based)
-    hydra-streaming-middleware.mjs # Composable middleware pipeline + PeakEWMA
-    hydra-telemetry.mjs      # OTel GenAI tracing (optional peer dependency)
-    hydra-metrics.mjs        # Call metrics collection
-    hydra-models.mjs         # Model discovery (API/CLI/config) and listing
-    hydra-models-select.mjs  # Interactive model + reasoning effort picker
-    hydra-audit.mjs          # Multi-agent code audit and prioritized report generator
-    hydra-nightly.mjs        # Nightly 5-phase pipeline (scan/discover/prioritize/execute/report)
-    hydra-nightly-discovery.mjs # AI-powered task suggestion for nightly
-    hydra-nightly-review.mjs # Nightly review with smart merge
-    hydra-openai.mjs         # OpenAI API streaming client
-    hydra-operator.mjs       # Interactive command center
-    hydra-prompt-choice.mjs  # Interactive numbered-choice prompt UI
-    hydra-statusbar.mjs      # Persistent 5-line terminal status bar
-    hydra-sub-agents.mjs     # Built-in virtual sub-agent definitions
-    hydra-sync-md.mjs        # HYDRA.md sync across projects
-    hydra-ui.mjs             # Terminal UI components
-    hydra-usage.mjs          # Token usage monitor
-    hydra-utils.mjs          # Shared utilities (+ spec generation, async model calls)
-    hydra-verification.mjs   # Project-aware verification command resolver
-    hydra-version.mjs        # Runtime version string
-    hydra-worker.mjs         # Headless background agent execution
-    hydra-worktree.mjs       # Git worktree isolation per task
-    orchestrator-client.mjs  # CLI client for daemon
-    orchestrator-daemon.mjs  # HTTP server + event-sourced state manager
-    sync.mjs                 # Legacy sync CLI
-  docs/
-    INSTALL.md               # Installation guide
-    USAGE.md                 # Command reference
-    ARCHITECTURE.md          # System design
-    CONTRIBUTING.md          # Extension guide
-    coordination/
-      specs/                 # Generated spec documents for complex prompts
-  hydra.config.json          # Model + usage + worktree + MCP + verification + concierge config
-  package.json
-  test/
-    hydra-activity.test.mjs                 # Activity digest detection + formatting tests
-    hydra-agents.test.mjs                  # Agent registry + sub-agent tests
-    hydra-codebase-context.test.mjs        # Codebase knowledge detection + topic mapping tests
-    hydra-concierge-providers.test.mjs     # Provider detection + fallback chain tests
-    hydra-evolve-suggestions.test.mjs      # Evolve suggestions backlog tests
-    hydra-github.test.mjs                  # GitHub integration + parseRemoteUrl tests
-    hydra-mcp.test.mjs                     # MCP client unit tests
-    hydra-metrics.test.mjs                 # Metrics collection tests
-    hydra-streaming-clients.test.mjs       # Anthropic/Google client + concierge multi-provider tests
-    hydra-sync-md.test.mjs                 # HYDRA.md sync tests
-    hydra-ui.test.mjs                      # UI formatting + color tests
-    hydra-utils.test.mjs                   # Utility function tests
-    hydra-verification.test.mjs            # Verification resolver unit tests
-    daemon-extended.integration.test.mjs   # Extended daemon endpoint tests
-    orchestrator-daemon.integration.test.mjs # Core daemon endpoint integration tests
-```
+### Orchestration & Routing
+
+- **Five orchestration modes**: Auto (3-way routing), Council (multi-round deliberation), Dispatch (headless pipeline), Smart (auto-tier per complexity), Chat (concierge conversation)
+- **Intelligent route classification**: Local heuristic classifies prompts into single/tandem/council routes — zero agent CLI calls for routing
+- **Tandem dispatch**: 2-agent lead-follow pairs (e.g., Claude analyzes, Codex implements)
+- **Affinity-based task routing**: 10 task types across 3 agents with adaptive learning from outcomes
+- **Virtual sub-agents**: Role-specialized agents (security-reviewer, test-writer, doc-generator, researcher) that resolve to physical agents
+
+### Concierge Chat
+
+- **Multi-provider front-end**: Conversational AI (OpenAI → Anthropic → Google fallback) — answers questions directly, escalates to agents when real work is needed
+- **Situational awareness**: "What's going on?" fetches real-time activity from daemon and agents
+- **Codebase knowledge**: "How does dispatch work?" injects architecture context from docs and knowledge base
+- **Command-aware**: Fuzzy matching catches typos before falling back to AI suggestions
+
+### Agent & Model Management
+
+- **Per-agent model switching**: Trade quality for speed/cost at runtime
+- **Interactive model picker**: Type-to-filter browser with reasoning effort configuration
+- **Headless workers**: Background agent execution with claim-execute-report loop
+- **Agent Forge**: Multi-model agent creation pipeline — Gemini analyzes, Claude designs, Gemini critiques, Claude refines, optional live test
+
+### Monitoring & Safety
+
+- **Token usage monitoring**: Three-tier budget tracking (weekly, daily, sliding window) with auto model-switching at critical levels
+- **Model recovery**: Automatic fallback when a model is unavailable or rate-limited
+- **Rate limit resilience**: Exponential backoff with jitter across all providers
+- **Failure doctor**: Diagnoses pipeline failures, detects recurring patterns, auto-creates follow-up tasks
+- **Circuit breaker**: Per-model failure tracking with automatic recovery after cool-down
+- **5-line status bar**: Persistent terminal footer with agent activity, token gauge, and event ticker
+
+### Automation Pipelines
+
+- **Nightly runner**: Scans TODO comments, `docs/TODO.md`, and GitHub issues → prioritizes → executes autonomously with budget tracking
+- **Evolve**: 7-phase autonomous self-improvement with investigator self-healing and knowledge accumulation
+- **Tasks runner**: Per-task branch isolation, council-lite review for complex tasks, JSON + Markdown reports
+- **AI discovery**: Agent analyzes codebase and suggests improvement tasks
+- **Commit attribution**: Automated commits include `Originated-By:` and `Executed-By:` git trailers
+
+### Platform & Infrastructure
+
+- **Event-sourced daemon**: HTTP state management with replay, snapshots, and dead-letter queue
+- **Git worktree isolation**: Per-task isolated filesystems for parallel agent work
+- **MCP server**: 11 tools, 5 resources, 3 prompts via official SDK (protocol 2025-03-26)
+- **Streaming middleware**: Composable pipeline — rate limiting, circuit breaking, retry, telemetry
+- **OTel tracing**: Optional distributed tracing with GenAI semantic conventions
+- **Heartbeat crash recovery**: Daemon detects stale workers and requeues or dead-letters tasks
 
 ## Commands
 
@@ -262,32 +149,19 @@ hydra/
 |---------|-------------|
 | `npm start` | Start the daemon |
 | `npm run go` | Launch operator console |
-| `npm run stats` | View metrics dashboard |
-| `npm run usage` | Check token usage |
-| `npm run model` | Show/set active models |
-| `npm run models` | List all available models per agent |
-| `npm run models:select` | Interactive model + effort picker |
 | `npm run council` | Full multi-round deliberation |
-| `npm run dispatch` | Headless pipeline |
 | `npm run evolve` | Run autonomous self-improvement |
-| `npm run evolve:suggestions` | Manage evolve suggestions backlog |
 | `npm run nightly` | Run nightly task automation |
-| `npm run audit` | Run analysis-only multi-agent code audit |
-| `npm run tasks` | Scan & execute TODO/FIXME/issues autonomously |
-| `npm run tasks:review` | Review tasks runner branches |
-| `npm run evolve:review` | Review evolve round results |
-| `npm run nightly:review` | Review nightly round results |
-| `npm run eval` | Run routing evaluation against golden corpus |
-| `npm test` | Run unit + integration tests |
-| `npm run package` | Build installable tarball in `dist/` |
-| `npm run build:exe` | Build standalone Windows executable `dist/hydra.exe` |
-| `hydra` | Launch operator console (`mode=auto`) |
-| `hydra --full` | Launch daemon + heads + operator |
-| `hydra-client init` | Initialize current project coordination files |
+| `npm run tasks` | Scan & execute TODO/FIXME/issues |
+| `npm run audit` | Multi-agent code audit |
+| `npm run eval` | Routing evaluation against golden corpus |
+| `npm test` | Run all tests |
+| `npm run usage` | Check token usage |
+| `npm run models:select` | Interactive model + effort picker |
+| `npm run build:exe` | Build standalone Windows executable |
 
-## Operator Commands
-
-These commands are available inside the interactive operator console (`npm run go`).
+<details>
+<summary><strong>All operator commands</strong> (inside the interactive console)</summary>
 
 | Command | Description |
 |---------|-------------|
@@ -298,13 +172,13 @@ These commands are available inside the interactive operator console (`npm run g
 | `:mode smart` | Auto-select model tier per prompt complexity |
 | `:mode handoff` | Direct handoffs (fast, no triage) |
 | `:mode council` | Full council deliberation |
-| `:mode dispatch` | Headless pipeline (Claude->Gemini->Codex) |
+| `:mode dispatch` | Headless pipeline (Claude→Gemini→Codex) |
 | `:model` | Show mode & active models |
 | `:model claude=sonnet` | Override agent model |
 | `:model reset` | Clear all overrides |
 | `:model:select` | Interactive model picker |
-| `:roles` | Show role->agent->model mapping & recommendations |
-| `:roster` | Edit role->agent->model assignments interactively |
+| `:roles` | Show role→agent→model mapping & recommendations |
+| `:roster` | Edit role→agent→model assignments interactively |
 | `:persona` | Edit personality settings interactively |
 | `:persona show` | Show current personality config |
 | `:persona <preset>` | Apply preset (default/professional/casual/analytical/terse) |
@@ -373,230 +247,39 @@ These commands are available inside the interactive operator console (`npm run g
 | `:quit` | Exit operator console |
 | `!<prompt>` | Force dispatch (bypass concierge) |
 
-## GitHub Integration
+</details>
 
-Hydra can create pull requests, list PRs, and integrate with the review flow via the `gh` CLI.
+## Configuration
 
-**Setup:**
-```bash
-# Install gh CLI: https://cli.github.com
-gh auth login
-```
+Hydra is configured via `hydra.config.json` in the project root. Key sections:
 
-**Operator commands:**
-| Command | Description |
-|---------|-------------|
-| `:github` | Show GitHub status (gh installed, auth, repo, open PRs) |
-| `:github prs` | List open pull requests |
-| `:pr create [branch]` | Push branch and create a pull request |
-| `:pr list` | List open pull requests |
-| `:pr view <number>` | Show PR details (title, state, changes, URL) |
+| Section | Controls |
+|---------|----------|
+| `roles` | Role→agent→model mapping (architect, analyst, implementer, etc.) |
+| `models` | Active model per agent + overrides |
+| `routing` | Route strategy, council gate, tandem dispatch |
+| `workers` | Headless worker settings, permission modes, heartbeat |
+| `nightly` | Nightly pipeline sources, budget, AI discovery |
+| `evolve` | Self-improvement rounds, suggestions backlog |
+| `doctor` | Failure diagnosis, recurring pattern detection |
+| `github` | PR defaults, labels, reviewers |
+| `providers` | API keys, tier levels, rate limits |
+| `persona` | Concierge personality, tone, presets |
 
-**Config** (`hydra.config.json`):
-```json
-{
-  "github": {
-    "enabled": false,
-    "defaultBase": "",
-    "draft": false,
-    "labels": [],
-    "reviewers": [],
-    "prBodyFooter": ""
-  }
-}
-```
-
-When `gh` is installed, the evolve and nightly review flows automatically show a `[p]r` option alongside merge/skip/diff/delete.
-
-## Failure Doctor
-
-The doctor layer fires when evolve, nightly, or tasks encounters a non-trivial failure. It calls the investigator for diagnosis, triages the result into actionable follow-ups, and tracks recurring patterns.
-
-**Config** (`hydra.config.json`):
-```json
-{
-  "doctor": {
-    "enabled": true,
-    "autoCreateTasks": true,
-    "autoCreateSuggestions": true,
-    "addToKnowledgeBase": true,
-    "recurringThreshold": 3,
-    "recurringWindowDays": 7
-  }
-}
-```
-
-**How it works:**
-- On failure, builds an error signature (agent + phase + error snippet)
-- Checks `DOCTOR_LOG.ndjson` for recurring patterns (same signature 3+ times in 7 days)
-- Rate limits and simple timeouts are skipped (already handled by retry logic)
-- Calls the investigator for diagnosis when available
-- Triages: fundamental → suggestion ticket, fixable → daemon task (fallback: suggestion), transient → log only
-- Recurring transient failures get escalated to tickets
-- Non-transient findings are added to the evolve knowledge base
-- All diagnoses are logged to `docs/coordination/doctor/DOCTOR_LOG.ndjson`
-
-## Evolve Suggestions Backlog
-
-The evolve pipeline maintains a persistent backlog of improvement ideas sourced from rejected/deferred rounds, user input, and review sessions. At the start of each evolve session, pending suggestions are presented in an interactive picker.
-
-**How it works:**
-- Rejected evolve rounds with valid improvement text are auto-backlogged (configurable)
-- Deferred rounds can also auto-populate the backlog
-- Jaccard similarity deduplication prevents near-duplicate entries
-- Picking a suggestion skips RESEARCH + DELIBERATE phases — goes straight to PLAN
-- Suggestions track attempts, scores, and learnings across retries
-- Status lifecycle: `pending` → `exploring` → `completed` | `rejected` | `abandoned`
-- During review, `[r]etry` creates a suggestion from the rejected round
-
-**CLI** (`npm run evolve:suggestions`):
-| Subcommand | Description |
-|------------|-------------|
-| `list` | List suggestions (default: pending; `status=all` for all) |
-| `add` | Add a suggestion (interactive or `title=... area=...`) |
-| `remove <ID>` | Mark suggestion as abandoned |
-| `reset <ID>` | Reset suggestion back to pending |
-| `import` | Scan decision artifacts for retryable rounds |
-| `stats` | Show backlog statistics by status and area |
-
-**Config** (`hydra.config.json`):
-```json
-{
-  "evolve": {
-    "suggestions": {
-      "enabled": true,
-      "autoPopulateFromRejected": true,
-      "autoPopulateFromDeferred": true,
-      "maxPendingSuggestions": 50,
-      "maxAttemptsPerSuggestion": 3
-    }
-  }
-}
-```
-
-## Nightly Runner
-
-Config-driven autonomous overnight pipeline. Scans multiple sources for tasks, optionally uses AI discovery to suggest improvements, prioritizes and executes with intelligent agent routing and budget-aware handoff.
-
-**5-phase pipeline:** SCAN → DISCOVER → PRIORITIZE → EXECUTE → REPORT
-
-**Sources:** TODO/FIXME code comments, `docs/TODO.md`, GitHub issues, static config tasks, AI discovery (via agent analysis)
-
-**Features:**
-- Multi-source task scanning via `hydra-tasks-scanner.mjs`
-- Optional AI discovery phase (default: gemini analyzes codebase for improvements)
-- Intelligent agent routing: `classifyTask()` + `bestAgentFor()` picks optimal agent per task
-- Budget-aware handoff: switches to economy agent (codex/o4-mini) at configurable threshold
-- Model recovery and investigator self-healing on failures
-- Smart merge review: auto-rebases when base branch has advanced
-- `--dry-run` mode for scan + prioritize without executing
-- Fully unattended — no interactive prompts
-
-**Config** (`hydra.config.json`):
-```json
-{
-  "nightly": {
-    "baseBranch": "dev",
-    "branchPrefix": "nightly",
-    "maxTasks": 5,
-    "maxHours": 4,
-    "sources": {
-      "todoMd": true,
-      "todoComments": true,
-      "githubIssues": true,
-      "configTasks": true,
-      "aiDiscovery": true
-    },
-    "aiDiscovery": {
-      "agent": "gemini",
-      "maxSuggestions": 5,
-      "focus": []
-    },
-    "budget": {
-      "softLimit": 400000,
-      "hardLimit": 500000,
-      "handoffThreshold": 0.70,
-      "handoffAgent": "codex",
-      "handoffModel": "o4-mini"
-    },
-    "tasks": [],
-    "investigator": { "enabled": true }
-  }
-}
-```
-
-**CLI flags:**
-```bash
-node lib/hydra-nightly.mjs                         # defaults from config
-node lib/hydra-nightly.mjs --dry-run               # scan + prioritize only
-node lib/hydra-nightly.mjs --no-discovery          # skip AI discovery
-node lib/hydra-nightly.mjs --interactive           # interactive task selection
-node lib/hydra-nightly.mjs max-tasks=3 max-hours=2 # override limits
-```
-
-## Audit Runner
-
-Analysis-only code audit that fans out category reviews to multiple agents and writes a prioritized punch list to `docs/audit/`.
-
-**Config** (`hydra.config.json`):
-```json
-{
-  "audit": {
-    "maxFiles": 200,
-    "categories": ["dead-code", "inconsistencies", "architecture", "security", "tests", "types"],
-    "reportDir": "docs/audit",
-    "timeout": 300000,
-    "economy": false
-  }
-}
-```
-
-**CLI flags:**
-```bash
-node lib/hydra-audit.mjs                                  # defaults from config
-node lib/hydra-audit.mjs project=/path/to/YourProject      # target another project
-node lib/hydra-audit.mjs categories=security,tests        # category subset
-node lib/hydra-audit.mjs agents=gemini,claude --economy   # agent subset + cheap models
-node lib/hydra-audit.mjs max-files=300 timeout=420000     # override scan cap + per-agent timeout
-```
-
-## Tasks Runner
-
-The tasks runner scans the codebase for actionable work items (TODO/FIXME code comments, unchecked items in `docs/TODO.md`, open GitHub issues) and executes them autonomously with per-task branch isolation.
-
-**Per-task lifecycle:** CLASSIFY → PLAN (complex only) → EXECUTE → VERIFY → DECIDE (council-lite review for complex tasks)
-
-**Features:**
-- Multi-source scanning: code comments, TODO.md, GitHub issues
-- Budget presets (light/medium/heavy) with 4-tier threshold system
-- Branch isolation: `tasks/{date}/{slug}` per task
-- Self-healing via investigator on execution failures
-- Council-lite review: verifier agent reviews diffs for complex tasks
-- JSON + Markdown reports in `docs/coordination/tasks/`
-
-**Operator commands:**
-| Command | Description |
-|---------|-------------|
-| `:tasks scan` | Scan codebase for work items |
-| `:tasks run` | Launch tasks runner |
-| `:tasks review` | Interactive branch review & merge |
-| `:tasks status` | Show latest run report |
-| `:tasks clean` | Delete all tasks/* branches |
+See [docs/USAGE.md](docs/USAGE.md) for full configuration reference.
 
 ## Documentation
 
-- [Installation](docs/INSTALL.md)
+- [Installation Guide](docs/INSTALL.md)
 - [Usage & Commands](docs/USAGE.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Contributing](docs/CONTRIBUTING.md)
+- [Model Profiles](docs/MODEL_PROFILES.md)
+- [Contributing](CONTRIBUTING.md)
 
-## Requirements
+## Daemon Security
 
-- Node.js 20+
-- PowerShell 7+ (for launchers)
-- At least one AI CLI: `gemini`, `codex`, or `claude`
-- Optional: `gh` CLI for GitHub integration (PRs, repo detection)
+The HTTP daemon binds to `127.0.0.1` (localhost only) by default. It is designed for local, single-user use and does not include authentication. See [SECURITY.md](SECURITY.md) for vulnerability reporting.
 
 ## License
 
-Private project.
+[MIT](LICENSE)
