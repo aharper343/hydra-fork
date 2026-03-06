@@ -20,7 +20,7 @@
   H Y D R A
 ```
 
-Hydra coordinates three AI coding agents — [Gemini CLI](https://github.com/google-gemini/gemini-cli), [Codex CLI](https://github.com/openai/codex), and [Claude Code](https://docs.anthropic.com/en/docs/claude-code) — through a shared HTTP daemon with a task queue, intelligent routing, and multi-round deliberation.
+Hydra coordinates three AI coding agents, [Gemini CLI](https://github.com/google-gemini/gemini-cli), [Codex CLI](https://github.com/openai/codex), and [Claude Code](https://docs.anthropic.com/en/docs/claude-code), through a shared HTTP daemon with a task queue, intelligent routing, and multi-round deliberation.
 
 ## Why Hydra?
 
@@ -28,10 +28,10 @@ Each AI coding agent has strengths: Claude is a strong architect, Gemini excels 
 
 Hydra lets you use all three together:
 
-- **Route work to the right agent** — a local heuristic classifies your prompt and picks the best agent (or pair, or all three) with zero extra API calls
-- **Run agents in parallel** — headless workers claim tasks from a shared queue and execute concurrently in isolated git worktrees
-- **Multi-round deliberation** — Claude proposes, Gemini critiques, Claude refines, Codex implements
-- **Self-improving pipelines** — nightly automation scans your codebase for TODOs, issues, and improvements, then executes them autonomously with budget tracking and self-healing on failures
+- **Route work to the right agent** a local heuristic classifies your prompt and picks the best agent (or pair, or all three) with zero extra API calls
+- **Run agents in parallel** headless workers claim tasks from a shared queue and execute concurrently in isolated git worktrees
+- **Multi-round deliberation** Claude proposes, Gemini critiques, Claude refines, Codex implements
+- **Self-improving pipelines** nightly automation scans your codebase for TODOs, issues, and improvements, then executes them autonomously with budget tracking and self-healing on failures
 
 ## Requirements
 
@@ -98,14 +98,14 @@ Once in the operator console, type a prompt and Hydra routes it automatically. U
 ### Orchestration & Routing
 
 - **Five orchestration modes**: Auto (3-way routing), Council (multi-round deliberation), Dispatch (headless pipeline), Smart (auto-tier per complexity), Chat (concierge conversation)
-- **Intelligent route classification**: Local heuristic classifies prompts into single/tandem/council routes — zero agent CLI calls for routing
+- **Intelligent route classification**: Local heuristic classifies prompts into single/tandem/council routes. Zero agent CLI calls for routing
 - **Tandem dispatch**: 2-agent lead-follow pairs (e.g., Claude analyzes, Codex implements)
 - **Affinity-based task routing**: 10 task types across 3 agents with adaptive learning from outcomes
 - **Virtual sub-agents**: Role-specialized agents (security-reviewer, test-writer, doc-generator, researcher) that resolve to physical agents
 
 ### Concierge Chat
 
-- **Multi-provider front-end**: Conversational AI (OpenAI → Anthropic → Google fallback) — answers questions directly, escalates to agents when real work is needed
+- **Multi-provider front-end**: Conversational AI (OpenAI → Anthropic → Google fallback) answers questions directly, escalates to agents when real work is needed
 - **Situational awareness**: "What's going on?" fetches real-time activity from daemon and agents
 - **Codebase knowledge**: "How does dispatch work?" injects architecture context from docs and knowledge base
 - **Command-aware**: Fuzzy matching catches typos before falling back to AI suggestions
@@ -115,7 +115,7 @@ Once in the operator console, type a prompt and Hydra routes it automatically. U
 - **Per-agent model switching**: Trade quality for speed/cost at runtime
 - **Interactive model picker**: Type-to-filter browser with reasoning effort configuration
 - **Headless workers**: Background agent execution with claim-execute-report loop
-- **Agent Forge**: Multi-model agent creation pipeline — Gemini analyzes, Claude designs, Gemini critiques, Claude refines, optional live test
+- **Agent Forge**: Multi-model agent creation pipeline: Gemini analyzes, Claude designs, Gemini critiques, Claude refines, optional live test
 
 ### Monitoring & Safety
 
@@ -139,7 +139,7 @@ Once in the operator console, type a prompt and Hydra routes it automatically. U
 - **Event-sourced daemon**: HTTP state management with replay, snapshots, and dead-letter queue
 - **Git worktree isolation**: Per-task isolated filesystems for parallel agent work
 - **MCP server**: 11 tools, 5 resources, 3 prompts via official SDK (protocol 2025-03-26)
-- **Streaming middleware**: Composable pipeline — rate limiting, circuit breaking, retry, telemetry
+- **Streaming middleware**: Composable pipeline: rate limiting, circuit breaking, retry, telemetry
 - **OTel tracing**: Optional distributed tracing with GenAI semantic conventions
 - **Heartbeat crash recovery**: Daemon detects stale workers and requeues or dead-letters tasks
 
