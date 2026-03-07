@@ -60,6 +60,29 @@ hydra --full                              # daemon + agent heads + operator
 
 Once in the operator console, type a prompt and Hydra routes it automatically. Use `:help` to see all commands.
 
+## CLI Integration
+
+After installing Hydra, register its MCP server with your AI CLIs:
+
+```bash
+hydra setup
+```
+
+This detects installed CLIs (Claude Code, Gemini CLI, Codex CLI) and registers the Hydra MCP server globally. New CLI sessions will have access to Hydra coordination tools (`hydra_ask`, `hydra_tasks_claim`, `hydra_status`, etc.).
+
+To make a project Hydra-aware (generates per-agent coordination instructions):
+
+```bash
+cd /path/to/your/project
+hydra init
+```
+
+To remove the MCP registration:
+
+```bash
+hydra setup --uninstall
+```
+
 ## Architecture
 
 ```

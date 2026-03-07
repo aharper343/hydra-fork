@@ -22,6 +22,25 @@ node lib/orchestrator-daemon.mjs stop [url=http://127.0.0.1:4173]
 # or: hydra-daemon stop
 ```
 
+## MCP Setup
+
+Register Hydra's MCP server with installed AI CLIs:
+
+```bash
+hydra setup              # Register with all detected CLIs
+hydra setup --force      # Overwrite existing registrations
+hydra setup --uninstall  # Remove registrations
+```
+
+Initialize a project with Hydra coordination instructions:
+
+```bash
+hydra init                         # Generate HYDRA.md in current directory
+hydra init --project-name=MyApp    # With custom project name
+```
+
+This creates `HYDRA.md` and syncs per-agent instruction files (`CLAUDE.md`, `GEMINI.md`, `AGENTS.md`).
+
 ## Client Commands
 
 All client commands use: `node lib/orchestrator-client.mjs <command> [key=value]`
