@@ -144,7 +144,37 @@ All routing decisions happen via a local heuristic. No API calls are made until 
 
 ## Essential Commands
 
-<!-- TODO: cheat sheet -->
+### npm scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run go` | Launch operator console |
+| `npm start` | Start the daemon |
+| `npm test` | Run all tests |
+| `npm run council -- prompt="..."` | Full council deliberation |
+| `npm run evolve` | Autonomous self-improvement |
+| `npm run nightly` | Nightly task automation |
+| `npm run tasks` | Scan & execute TODO/FIXME/issues |
+| `npm run eval` | Routing evaluation against golden corpus |
+
+### Operator console (inside `npm run go`)
+
+| Command | Description |
+|---------|-------------|
+| `:help` | Show all commands |
+| `:status` | Dashboard with agents & tasks |
+| `:mode auto\|smart\|council\|dispatch\|chat` | Switch dispatch mode |
+| `:model claude=sonnet` | Override agent model |
+| `:model:select` | Interactive model + reasoning effort picker |
+| `:workers start` | Start headless background workers |
+| `:evolve` | Launch self-improvement session |
+| `:nightly` | Interactive nightly run setup |
+| `:doctor fix` | Auto-detect and fix pipeline issues |
+| `:persona` | Edit concierge personality |
+| `:resume` | Scan all resumable state |
+| `!<prompt>` | Force dispatch, bypass concierge |
+
+For the full command reference (80+ commands organized by category), see [docs/USAGE.md](docs/USAGE.md#operator-commands-reference).
 
 ## Configuration
 
