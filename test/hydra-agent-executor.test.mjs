@@ -463,4 +463,18 @@ describe('executeAgent — custom CLI agent routing', () => {
     assert.strictEqual(result.errorCategory, 'custom-cli-disabled');
     try { unregisterAgent('test-disabled-cli'); } catch { /* ignore */ }
   });
+
+  it('returns custom-api-disabled when customType=api agent is disabled', async () => {
+    registerAgent('test-disabled-api', {
+      type: AGENT_TYPE.PHYSICAL,
+      customType: 'api',
+      cli: null, invoke: null, contextBudget: 1000,
+      councilRole: null, taskAffinity: {}, enabled: false,
+      baseUrl: 'http://localhost:11434/v1', model: 'test-model',
+    });
+    const result = await executeAgent('test-disabled-api', 'hello');
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(result.errorCategory, 'custom-api-disabled');
+    try { unregisterAgent('test-disabled-api'); } catch { /* ignore */ }
+  });
 });
