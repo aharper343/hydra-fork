@@ -439,3 +439,24 @@ test('AGENT_TYPE has PHYSICAL and VIRTUAL', () => {
   assert.equal(AGENT_TYPE.PHYSICAL, 'physical');
   assert.equal(AGENT_TYPE.VIRTUAL, 'virtual');
 });
+
+// ── AFFINITY_PRESETS ─────────────────────────────────────────────────────────
+
+import { AFFINITY_PRESETS } from '../lib/hydra-config.mjs';
+
+test('AFFINITY_PRESETS exports balanced, code-focused, review-focused, research-focused', () => {
+  const keys = Object.keys(AFFINITY_PRESETS);
+  assert.ok(keys.includes('balanced'), 'should have balanced preset');
+  assert.ok(keys.includes('code-focused'), 'should have code-focused preset');
+  assert.ok(keys.includes('review-focused'), 'should have review-focused preset');
+  assert.ok(keys.includes('research-focused'), 'should have research-focused preset');
+});
+
+test('each AFFINITY_PRESETS entry covers all 10 task types with numbers', () => {
+  const TASK_TYPES_LIST = ['planning','architecture','review','refactor','implementation','analysis','testing','security','research','documentation'];
+  for (const [presetName, affinity] of Object.entries(AFFINITY_PRESETS)) {
+    for (const tt of TASK_TYPES_LIST) {
+      assert.strictEqual(typeof affinity[tt], 'number', `preset "${presetName}" missing task type: ${tt}`);
+    }
+  }
+});
