@@ -434,7 +434,25 @@
       "openai": 60,
       "anthropic": 50,
       "google": 300
-    }
+    },
+    "presets": [
+      {
+        "name": "glm-5",
+        "label": "GLM-5 (Zhipu AI)",
+        "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
+        "defaultModel": "glm-5",
+        "envKey": "GLM_API_KEY",
+        "description": "Zhipu AI flagship — OpenAI-compat, strong reasoning, cost-effective"
+      },
+      {
+        "name": "kimi-k2",
+        "label": "Kimi K2.5 (Moonshot AI)",
+        "baseUrl": "https://api.moonshot.cn/v1",
+        "defaultModel": "kimi-k2",
+        "envKey": "MOONSHOT_API_KEY",
+        "description": "Moonshot AI — strong at long context and code, OpenAI-compat"
+      }
+    ]
   },
   "doctor": {
     "enabled": true,
@@ -460,7 +478,16 @@
     "councilGate": true,
     "tandemEnabled": true,
     "councilMode": "sequential",
-    "councilTimeoutMs": 420000
+    "councilTimeoutMs": 420000,
+    "intentGate": {
+      "enabled": true,
+      "confidenceThreshold": 0.55
+    },
+    "worktreeIsolation": {
+      "enabled": false,
+      "cleanupOnSuccess": true,
+      "worktreeDir": ".hydra/worktrees"
+    }
   },
   "modelRecovery": {
     "enabled": true,
@@ -591,6 +618,12 @@
   },
   "telemetry": {
     "enabled": true
+  },
+  "context": {
+    "hierarchical": {
+      "enabled": true,
+      "maxFiles": 3
+    }
   },
   "worktrees": {
     "enabled": false,
