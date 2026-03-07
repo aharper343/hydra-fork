@@ -92,7 +92,55 @@ All routing decisions happen via a local heuristic. No API calls are made until 
 
 ## Features
 
-<!-- TODO: 6 groups -->
+### Intelligent Routing
+
+- **Auto mode** — local heuristic classifies prompts into single / tandem / council routes without burning API tokens on routing
+- **Smart mode** — extends Auto with per-prompt model tier selection (economy → balanced → performance based on complexity)
+- **Intent gate** — pre-screens prompts before dispatch; catches off-topic or ambiguous inputs before they reach an agent
+- **Tandem dispatch** — lead-follow agent pairs (e.g. Claude analyzes the problem, Codex implements the fix)
+- **Affinity routing** — 10 task types mapped to optimal agents, with adaptive learning from past outcomes
+- **Virtual sub-agents** — role-specialized agents (security-reviewer, test-writer, doc-generator, researcher) that resolve to physical agents at dispatch time
+
+### Concierge Chat
+
+- **Multi-provider front-end** — conversational AI with automatic failover: OpenAI → Anthropic → Google
+- **Situational awareness** — "What's going on?" queries real-time daemon activity and agent status
+- **Codebase knowledge** — questions about your architecture inject context from docs and the knowledge base
+- **Fuzzy command matching** — catches `:stat` when you meant `:stats`, before falling back to AI suggestions
+- **Persona system** — configurable identity, tone, verbosity, humor, and presets; interactive editor via `:persona`
+
+### Automation Pipelines
+
+- **Nightly runner** — scans TODO comments, `docs/TODO.md`, and GitHub issues → prioritizes → executes autonomously with budget tracking and commit attribution
+- **Evolve** — 7-phase autonomous self-improvement loop with investigator self-healing, knowledge base accumulation, and a suggestions backlog for deferred improvements
+- **Tasks runner** — per-task branch isolation, council-lite review for complex tasks, JSON + Markdown reports
+- **Headless workers** — background agents claim tasks from the daemon queue, execute autonomously, and report results; permission modes configurable per agent
+
+### Agent & Model Management
+
+- **Per-agent model switching** — override any agent's model at runtime; interactive picker with type-to-filter and reasoning effort configuration
+- **Custom agents** — add CLI-based or API-backed agents via wizard or config; built-in provider presets for GLM-5 and Kimi K2.5
+- **Local agent** — API-backed fourth agent (`local`), no CLI install required; routes through OpenAI-compatible endpoints
+- **Agent Forge** — multi-model agent creation pipeline: Gemini analyzes requirements, Claude designs, Gemini critiques, Claude refines, optional live test
+- **Role system** — named roles (architect, analyst, implementer, etc.) map to agents and models; edit via `:roster`
+
+### Monitoring & Safety
+
+- **Circuit breaker** — per-model failure tracking; automatically opens after threshold failures and resets after cooldown
+- **Rate limit resilience** — provider-level token bucket with exponential backoff and jitter on 429s across all providers
+- **Three-tier budget tracking** — weekly, daily, and sliding-window token budgets with automatic model downgrade at thresholds
+- **Per-provider usage tracking** — local session counters plus optional billing API queries (OpenAI and Anthropic admin keys)
+- **Failure doctor** — diagnoses pipeline failures, detects recurring patterns, auto-creates follow-up tasks; `:doctor fix` runs an auto-remediation pipeline
+- **5-line status bar** — persistent terminal footer with agent activity, token gauge, last dispatch route, session cost, and rolling event ticker
+
+### Platform & Extensibility
+
+- **MCP server** — 11 tools, 5 resources, 3 prompts via official SDK (protocol 2025-03-26); register with `hydra setup`
+- **Hierarchical context** — scoped `HYDRA.md` files in any directory are auto-discovered and injected into agent calls for that path
+- **Event-sourced daemon** — HTTP state management with replay from any sequence number, snapshots, and dead-letter queue
+- **Git worktree isolation** — optional per-task isolated filesystems for parallel agent work without branch conflicts
+- **Streaming middleware** — composable pipeline: rate limiting → circuit breaking → retry → telemetry → header capture → usage tracking
+- **OTel tracing** — optional distributed tracing with GenAI semantic conventions; no-op when `@opentelemetry/api` is absent
 
 ## Essential Commands
 
