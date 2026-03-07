@@ -18,6 +18,7 @@ import {
   _resetRegistry,
   initAgentRegistry,
 } from '../lib/hydra-agents.mjs';
+import { AFFINITY_PRESETS } from '../lib/hydra-config.mjs';
 
 const CLOUD_AGENT_NAMES = ['claude', 'gemini', 'codex'];
 
@@ -442,8 +443,6 @@ test('AGENT_TYPE has PHYSICAL and VIRTUAL', () => {
 
 // ── AFFINITY_PRESETS ─────────────────────────────────────────────────────────
 
-import { AFFINITY_PRESETS } from '../lib/hydra-config.mjs';
-
 test('AFFINITY_PRESETS exports balanced, code-focused, review-focused, research-focused', () => {
   const keys = Object.keys(AFFINITY_PRESETS);
   assert.ok(keys.includes('balanced'), 'should have balanced preset');
@@ -453,9 +452,8 @@ test('AFFINITY_PRESETS exports balanced, code-focused, review-focused, research-
 });
 
 test('each AFFINITY_PRESETS entry covers all 10 task types with numbers', () => {
-  const TASK_TYPES_LIST = ['planning','architecture','review','refactor','implementation','analysis','testing','security','research','documentation'];
   for (const [presetName, affinity] of Object.entries(AFFINITY_PRESETS)) {
-    for (const tt of TASK_TYPES_LIST) {
+    for (const tt of TASK_TYPES) {
       assert.strictEqual(typeof affinity[tt], 'number', `preset "${presetName}" missing task type: ${tt}`);
     }
   }
