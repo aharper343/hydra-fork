@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { extractPathsFromPrompt, findScopedContextFiles, compileHierarchicalContext } from '../lib/hydra-context.mjs';
+import { extractPathsFromPrompt, findScopedContextFiles, compileHierarchicalContext, buildAgentContext } from '../lib/hydra-context.mjs';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -132,6 +132,64 @@ describe('compileHierarchicalContext', () => {
       assert.ok(result.includes('# Real file'), `Missing real content. Got:\n${result}`);
       // The missing file's path should not produce a broken section
       assert.ok(!result.includes('nonexistent'), `Should skip missing file. Got:\n${result}`);
+    } finally {
+      cleanTmp(root);
+    }
+  });
+});
+
+// ── buildAgentContext (wired behavior) ────────────────────────────────────────
+
+describe('buildAgentContext', () => {
+  it('returns root-only context when no promptText is provided', () => {
+    const root = makeTmpTree({
+      'src/HYDRA.md': '# Scoped src context',
+      'package.json': '{"name":"test-project"}',
+    });
+    try {
+      const projectConfig = { projectRoot: root, projectName: 'test-project' };
+      // No promptText → should fall through to base context only
+      const result = buildAgentContext('claude', {}, projectConfig, null);
+      // Must not contain the scoped context header
+      assert.ok(!result.includes('--- [src/HYDRA.md] ---'), `Should not include scoped header. Got:\n${result}`);
+    } finally {
+      cleanTmp(root);
+    }
+  });
+
+  it('prepends scoped HYDRA.md when promptText references a path in that subtree', () => {
+    const root = makeTmpTree({
+      'src/foo/bar.ts': '// implementation',
+      'src/HYDRA.md': '# Src module context\nDatabase schema details.',
+      'package.json': '{"name":"test-project"}',
+    });
+    try {
+      const projectConfig = { projectRoot: root, projectName: 'test-project' };
+      const prompt = `Please update the function in src/foo/bar.ts to handle null input.`;
+      const result = buildAgentContext('claude', {}, projectConfig, prompt);
+      // Scoped context header must appear before root context
+      assert.ok(result.includes('--- [src/HYDRA.md] ---'), `Should include scoped header. Got:\n${result}`);
+      assert.ok(result.includes('# Src module context'), `Should include scoped content. Got:\n${result}`);
+      // Scoped section should come before the root PROJECT CONTEXT block
+      const scopedIdx = result.indexOf('--- [src/HYDRA.md] ---');
+      const rootIdx = result.indexOf('--- PROJECT CONTEXT');
+      assert.ok(scopedIdx < rootIdx, `Scoped context should precede root context. scopedIdx=${scopedIdx}, rootIdx=${rootIdx}`);
+    } finally {
+      cleanTmp(root);
+    }
+  });
+
+  it('falls back to root-only context when no scoped HYDRA.md files are found', () => {
+    const root = makeTmpTree({
+      'src/foo/bar.ts': '// implementation',
+      'package.json': '{"name":"test-project"}',
+      // No HYDRA.md in src/
+    });
+    try {
+      const projectConfig = { projectRoot: root, projectName: 'test-project' };
+      const prompt = `Please update src/foo/bar.ts.`;
+      const result = buildAgentContext('claude', {}, projectConfig, prompt);
+      assert.ok(!result.includes('--- [src/'), `Should not include any scoped header. Got:\n${result}`);
     } finally {
       cleanTmp(root);
     }
