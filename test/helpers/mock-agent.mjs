@@ -68,10 +68,15 @@ function validateFixtures(agent, entries) {
   }
 
   const normalized = entries.map((entry, index) => normalizeFixtureEntry(agent, entry, index));
-  const hasDefault = normalized.some((entry) => entry.matchPattern === null);
+  const defaultEntry = normalized.find((entry) => entry.id === 'default');
+  const nullMatchEntries = normalized.filter((entry) => entry.matchPattern === null);
 
-  if (!hasDefault) {
-    throw new Error(`Fixture list for ${agent} must include a default entry with matchPattern null`);
+  if (!defaultEntry || defaultEntry.matchPattern !== null) {
+    throw new Error(`Fixture list for ${agent} must include a default entry with matchPattern null (id "default")`);
+  }
+
+  if (nullMatchEntries.length !== 1) {
+    throw new Error(`Fixture list for ${agent} must contain exactly one default entry with matchPattern null`);
   }
 
   return normalized;
@@ -101,9 +106,15 @@ function normalizeResponse(response) {
 
 export async function loadAgentFixture(agent) {
   const fixturePath = path.join(FIXTURES_DIR, `${agent}.json`);
-  const raw = await fs.readFile(fixturePath, 'utf8');
-  const parsed = JSON.parse(raw);
-  return validateFixtures(agent, parsed);
+  try {
+    const raw = await fs.readFile(fixturePath, 'utf8');
+    const parsed = JSON.parse(raw);
+    return validateFixtures(agent, parsed);
+  } catch (error) {
+    throw new Error(`Unable to load mock fixture for ${agent} from ${fixturePath}: ${error.message}`, {
+      cause: error,
+    });
+  }
 }
 
 export function createMockExecuteAgent(fixtureMap) {
@@ -125,7 +136,7 @@ export function createMockExecuteAgent(fixtureMap) {
 
     const promptText = String(prompt ?? '');
     const matched = fixtures.find((entry) => entry.matchPattern instanceof RegExp && entry.matchPattern.test(promptText));
-    const fallback = fixtures.find((entry) => entry.matchPattern === null);
+    const fallback = fixtures.find((entry) => entry.id === 'default');
     const selected = matched || fallback;
 
     if (!selected) {
