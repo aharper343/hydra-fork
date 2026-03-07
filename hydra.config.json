@@ -106,7 +106,7 @@
   "concierge": {
     "enabled": true,
     "model": "gpt-5",
-    "reasoningEffort": "medium",
+    "reasoningEffort": "xhigh",
     "maxHistoryMessages": 40,
     "autoActivate": true,
     "showProviderInPrompt": true,
@@ -118,7 +118,7 @@
       },
       {
         "provider": "anthropic",
-        "model": "claude-sonnet-4-6"
+        "model": "claude-sonnet-4-5-20250929"
       },
       {
         "provider": "google",
@@ -232,70 +232,7 @@
       ]
     },
     "custom": {},
-    "customAgents": [
-      {
-        "name": "test-cli-agent",
-        "type": "cli",
-        "displayName": "Test CLI",
-        "invoke": {
-          "nonInteractive": {
-            "cmd": "echo",
-            "args": [
-              "{prompt}"
-            ]
-          },
-          "headless": {
-            "cmd": "echo",
-            "args": [
-              "{prompt}"
-            ]
-          }
-        },
-        "responseParser": "plaintext",
-        "contextBudget": 16000,
-        "councilRole": null,
-        "taskAffinity": {
-          "implementation": 0.7,
-          "review": 0.4,
-          "research": 0,
-          "planning": 0.3,
-          "architecture": 0.25,
-          "refactor": 0.6,
-          "analysis": 0.4,
-          "testing": 0.55,
-          "security": 0.3,
-          "documentation": 0.4
-        },
-        "enabled": true
-      },
-      {
-        "name": "test-api-agent",
-        "type": "api",
-        "displayName": "Test API",
-        "baseUrl": "http://localhost:9999/v1",
-        "model": "test-model",
-        "contextBudget": 8000,
-        "councilRole": null,
-        "taskAffinity": {
-          "implementation": 0.8,
-          "review": 0.5,
-          "research": 0,
-          "planning": 0.35,
-          "architecture": 0.3,
-          "refactor": 0.75,
-          "analysis": 0.45,
-          "testing": 0.65,
-          "security": 0.25,
-          "documentation": 0.45
-        },
-        "enabled": true
-      },
-      {
-        "name": "bad-type-agent",
-        "type": "invalid",
-        "displayName": "Bad"
-      }
-    ],
+    "customAgents": [],
     "affinityLearning": {
       "enabled": true,
       "decayFactor": 0.9,
