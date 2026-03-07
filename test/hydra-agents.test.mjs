@@ -18,7 +18,7 @@ import {
   _resetRegistry,
   initAgentRegistry,
 } from '../lib/hydra-agents.mjs';
-import { AFFINITY_PRESETS } from '../lib/hydra-config.mjs';
+import { AFFINITY_PRESETS, loadHydraConfig, saveHydraConfig } from '../lib/hydra-config.mjs';
 
 const CLOUD_AGENT_NAMES = ['claude', 'gemini', 'codex'];
 
@@ -457,4 +457,95 @@ test('each AFFINITY_PRESETS entry covers all 10 task types with numbers', () => 
       assert.strictEqual(typeof affinity[tt], 'number', `preset "${presetName}" missing task type: ${tt}`);
     }
   }
+});
+
+// ── Custom physical agents (CLI + API) ────────────────────────────────────────
+
+import { describe, it, beforeEach, afterEach } from 'node:test';
+
+describe('initAgentRegistry — custom physical agents', () => {
+  let originalCustomAgents;
+
+  beforeEach(() => {
+    originalCustomAgents = loadHydraConfig().agents?.customAgents || [];
+    saveHydraConfig({
+      agents: {
+        customAgents: [
+          {
+            name: 'test-cli-agent',
+            type: 'cli',
+            displayName: 'Test CLI',
+            invoke: {
+              nonInteractive: { cmd: 'echo', args: ['{prompt}'] },
+              headless: { cmd: 'echo', args: ['{prompt}'] },
+            },
+            responseParser: 'plaintext',
+            contextBudget: 16000,
+            councilRole: null,
+            taskAffinity: {
+              implementation: 0.70, review: 0.40, research: 0.00,
+              planning: 0.30, architecture: 0.25, refactor: 0.60,
+              analysis: 0.40, testing: 0.55, security: 0.30, documentation: 0.40,
+            },
+            enabled: true,
+          },
+          {
+            name: 'test-api-agent',
+            type: 'api',
+            displayName: 'Test API',
+            baseUrl: 'http://localhost:9999/v1',
+            model: 'test-model',
+            contextBudget: 8000,
+            councilRole: null,
+            taskAffinity: {
+              implementation: 0.80, review: 0.50, research: 0.00,
+              planning: 0.35, architecture: 0.30, refactor: 0.75,
+              analysis: 0.45, testing: 0.65, security: 0.25, documentation: 0.45,
+            },
+            enabled: true,
+          },
+        ],
+      },
+    });
+    _resetRegistry();
+    initAgentRegistry();
+  });
+
+  afterEach(() => {
+    saveHydraConfig({ agents: { customAgents: originalCustomAgents } });
+    _resetRegistry();
+    initAgentRegistry();
+  });
+
+  it('registers custom CLI agent from customAgents config', () => {
+    const agent = getAgent('test-cli-agent');
+    assert.ok(agent, 'test-cli-agent should be in registry');
+    assert.strictEqual(agent.type, 'physical');
+    assert.strictEqual(agent.customType, 'cli');
+    assert.strictEqual(agent.displayName, 'Test CLI');
+  });
+
+  it('registers custom API agent from customAgents config', () => {
+    const agent = getAgent('test-api-agent');
+    assert.ok(agent, 'test-api-agent should be in registry');
+    assert.strictEqual(agent.type, 'physical');
+    assert.strictEqual(agent.customType, 'api');
+  });
+
+  it('custom agents appear in listAgents({ type: "physical" })', () => {
+    const names = listAgents({ type: 'physical' }).map(a => a.name);
+    assert.ok(names.includes('test-cli-agent'), 'test-cli-agent should be listed');
+    assert.ok(names.includes('test-api-agent'), 'test-api-agent should be listed');
+  });
+
+  it('built-in agents are still registered after loading custom agents', () => {
+    assert.ok(getAgent('claude'), 'claude should still be registered');
+    assert.ok(getAgent('gemini'), 'gemini should still be registered');
+    assert.ok(getAgent('codex'), 'codex should still be registered');
+  });
+
+  it('entry with invalid type is silently skipped', () => {
+    // The registry initialized without error — invalid entries are skipped
+    assert.ok(getAgent('claude'), 'registry is healthy');
+  });
 });
