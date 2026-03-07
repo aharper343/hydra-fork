@@ -105,10 +105,10 @@ hydra setup --uninstall
                        |  |  |
           +------------+  |  +-----------+
           v               v              v
-     +---------+  +-----------+  +--------+
-     | Gemini  |  |   Codex   |  | Claude |
-     | (3 Pro) |  | (GPT-5.4) |  | (Opus) |
-     +---------+  +-----------+  +--------+
+     +---------+    +-----------+    +--------+
+     | Gemini  |    |  OpenAI   |    | Claude |
+     | (3 Pro) |    | (GPT-5.4) |    | (Opus) |
+     +---------+    +-----------+    +--------+
        Analyst       Implementer      Architect
 
   Concierge: OpenAI → Anthropic → Google fallback chain

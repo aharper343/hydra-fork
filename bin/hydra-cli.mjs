@@ -65,7 +65,8 @@ function printHelp() {
     '  hydra setup              Register Hydra MCP server in AI CLIs',
     '  hydra setup --uninstall  Remove MCP registration',
     '  hydra setup --force      Overwrite existing registration',
-    '  hydra init               Generate HYDRA.md for current project',
+    '  hydra init [path]        Generate HYDRA.md for a project',
+    '  hydra init --force       Overwrite existing HYDRA.md',
     '',
   ].join('\n'));
 }

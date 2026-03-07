@@ -416,6 +416,106 @@ describe('generateHydraMdTemplate', () => {
   });
 });
 
+// ── main(init) ──────────────────────────────────────────────────────────────
+
+describe('main init', () => {
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = makeTmpDir();
+  });
+
+  afterEach(() => {
+    rmDir(tmpDir);
+  });
+
+  it('creates HYDRA.md and agent files in the target directory', async () => {
+    const targetDir = path.join(tmpDir, 'nested', 'project');
+
+    const result = await main(['node', 'hydra-setup.mjs', 'init', targetDir, '--project-name=TargetProject']);
+
+    assert.strictEqual(result.ok, true);
+    assert.ok(fs.existsSync(path.join(targetDir, 'HYDRA.md')));
+    assert.ok(fs.existsSync(path.join(targetDir, 'CLAUDE.md')));
+    assert.ok(fs.existsSync(path.join(targetDir, 'GEMINI.md')));
+    assert.ok(fs.existsSync(path.join(targetDir, 'AGENTS.md')));
+    assert.match(fs.readFileSync(path.join(targetDir, 'HYDRA.md'), 'utf8'), /TargetProject/);
+  });
+
+  it('preserves an existing HYDRA.md without --force and still syncs agent files', async () => {
+    const targetDir = path.join(tmpDir, 'existing');
+    const hydraMdPath = path.join(targetDir, 'HYDRA.md');
+    const existingHydraMd = `# HYDRA.md
+
+## Project Overview
+
+Original project instructions.
+
+## @claude
+
+Claude instructions.
+
+## @gemini
+
+Gemini instructions.
+
+## @codex
+
+Codex instructions.
+`;
+
+    fs.mkdirSync(targetDir, { recursive: true });
+    fs.writeFileSync(hydraMdPath, existingHydraMd, 'utf8');
+
+    const result = await main(['node', 'hydra-setup.mjs', 'init', targetDir]);
+
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(fs.readFileSync(hydraMdPath, 'utf8'), existingHydraMd);
+    assert.ok(fs.existsSync(path.join(targetDir, 'CLAUDE.md')));
+    assert.ok(fs.existsSync(path.join(targetDir, 'GEMINI.md')));
+    assert.ok(fs.existsSync(path.join(targetDir, 'AGENTS.md')));
+    assert.match(fs.readFileSync(path.join(targetDir, 'AGENTS.md'), 'utf8'), /Codex instructions\./);
+  });
+
+  it('overwrites an existing HYDRA.md when --force is set', async () => {
+    const targetDir = path.join(tmpDir, 'forced');
+    const hydraMdPath = path.join(targetDir, 'HYDRA.md');
+
+    fs.mkdirSync(targetDir, { recursive: true });
+    fs.writeFileSync(hydraMdPath, '# HYDRA.md\n\nLegacy instructions.\n', 'utf8');
+
+    const result = await main(['node', 'hydra-setup.mjs', 'init', targetDir, '--force', '--project-name=ForcedProject']);
+    const nextContent = fs.readFileSync(hydraMdPath, 'utf8');
+
+    assert.strictEqual(result.ok, true);
+    assert.notStrictEqual(nextContent, '# HYDRA.md\n\nLegacy instructions.\n');
+    assert.match(nextContent, /ForcedProject/);
+  });
+
+  it('rejects multiple target paths', async () => {
+    const result = await main([
+      'node',
+      'hydra-setup.mjs',
+      'init',
+      path.join(tmpDir, 'one'),
+      path.join(tmpDir, 'two'),
+    ]);
+
+    assert.strictEqual(result.ok, false);
+    assert.match(result.message, /at most one target path/i);
+  });
+
+  it('rejects target paths that are files', async () => {
+    const fileTarget = path.join(tmpDir, 'not-a-directory');
+    fs.writeFileSync(fileTarget, 'content', 'utf8');
+
+    const result = await main(['node', 'hydra-setup.mjs', 'init', fileTarget]);
+
+    assert.strictEqual(result.ok, false);
+    assert.match(result.message, /not a directory/i);
+  });
+});
+
 // ── registerCodexMcp / unregisterCodexMcp ───────────────────────────────────
 
 describe('registerCodexMcp', () => {
