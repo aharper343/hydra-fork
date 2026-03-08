@@ -50,11 +50,13 @@ file (copy from `.env.example`).
 ## Verification Command Execution
 
 The `verification.command` field in `hydra.config.json` is executed via the
-system shell when a task completes.  To guard against config-injection attacks,
-Hydra rejects commands that contain characters outside the safe set
-`[a-zA-Z0-9 _./:@=-]`.  Commands with shell meta-characters (`;`, `|`, `&`,
-backticks, `$`, `(`, `)`, `<`, `>`, etc.) are rejected and verification is
-disabled for that task.
+system shell when a task completes.  To guard against shell injection and
+command chaining via shell metacharacters, Hydra rejects commands that contain
+characters outside the safe set `[a-zA-Z0-9 _./:@=-]`.  Commands with shell
+meta-characters (`;`, `|`, `&`, backticks, `$`, `(`, `)`, `<`, `>`, etc.) are
+rejected and verification is disabled for that task.  This filter prevents
+shell interpretation/chaining but does **not** guarantee that a given command
+is non-malicious.
 
 Auto-detected verification commands (`npm test`, `cargo check`, etc.) come
 from a hardcoded allowlist and are always safe.

